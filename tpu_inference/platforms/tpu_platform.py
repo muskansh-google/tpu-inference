@@ -77,6 +77,14 @@ class TpuPlatform(Platform):
         return selected_backend.get_path()
 
     @classmethod
+    def get_vit_attn_backend(
+        cls, head_size: int, dtype: torch.dtype, **kwargs
+    ) -> str:
+        from vllm.v1.attention.backends.registry import AttentionBackendEnum
+        # For TPU, we always use FLASH_ATTN for Vision Transformer
+        return AttentionBackendEnum.FLASH_ATTN.get_path()
+
+    @classmethod
     def get_device_name(cls, device_id: int = 0) -> str:
         try:
             if vllm_envs.VLLM_TPU_USING_PATHWAYS:
