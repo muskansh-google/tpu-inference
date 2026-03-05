@@ -143,11 +143,14 @@ class TestMultiModalManager:
         call_args = self.mock_get_mm_embed_fn.call_args
 
         # Positional args: (state, image_grid_thw)
-        state_arg, grid_arg = call_args.args
+        # Positional args: (state, keys, values)
+        state_arg, keys_arg, values_arg = call_args.args
         # Keyword args: **batched_mm_inputs
         kwargs_arg = call_args.kwargs
 
         assert state_arg == self.runner.state
+        assert "image_grid_thw" in kwargs_arg
+        grid_arg = kwargs_arg["image_grid_thw"]
         assert grid_arg == ((1, 1, 1), )
         assert "pixel_values" in kwargs_arg
 
@@ -185,14 +188,22 @@ class TestMultiModalManager:
         mm_item = MultiModalKwargsItem({
             "pixel_values": dummy_pixel_values,
             "grid_thw": dummy_grid_thw,
-        }, "image", "hash1", (0, 10))
+        })
 
         req_state = CachedRequestState(
-            prompt="test",
+            req_id="req-1",
             prompt_token_ids=[1, 2, 3],
-            mm_inputs=[mm_item],
-            mm_hashes=[("hash1", mm_item.mm_position)],
-            mm_positions=[mm_item.mm_position],
+            output_token_ids=[],
+            sampling_params=MagicMock(),
+            block_ids=(),
+            num_computed_tokens=0,
+            mm_features=[
+                MultiModalFeatureSpec(data=mm_item,
+                                      identifier="hash1",
+                                      modality="image",
+                                      mm_position=PlaceholderRange(offset=0,
+                                                                   length=10))
+            ],
             lora_request=None,
             pooling_params=None,
             generator=None,
@@ -339,10 +350,12 @@ class TestMultiModalManager:
         self.mock_get_mm_embed_fn.assert_called_once()
         call_args = self.mock_get_mm_embed_fn.call_args
 
-        state_arg, grid_arg = call_args.args
+        state_arg, keys_arg, values_arg = call_args.args
         kwargs_arg = call_args.kwargs
 
         assert state_arg == self.runner.state
+        assert "image_grid_thw" in kwargs_arg
+        grid_arg = kwargs_arg["image_grid_thw"]
         assert grid_arg == ((1, 1, 1), (1, 2, 2))
         assert "pixel_values" in kwargs_arg
 
