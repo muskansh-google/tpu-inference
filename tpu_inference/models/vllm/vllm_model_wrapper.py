@@ -131,81 +131,6 @@ class _VllmRunner(torch.nn.Module):
              return self.vllm_model.model.embed_tokens(input_ids)
         raise NotImplementedError("embed_input_ids not implemented for this model")
 
-    def jit_embed_multimodal_fn(self):
-        @jax.jit(
-            static_argnames=("kwarg_keys", "image_grid_thw", "video_grid_thw", "grid_thw"),
-            # For now, we don't specify out_shardings as the output shape depends
-            # on the model and inputs. Usually it's replicated or sharded.
-            # We let JAX figure it out or rely on subsequent sharding ops.
-            # We let JAX figure it out or rely on subsequent sharding ops.
-        )
-        def embed_multimodal_fun(
-            params_and_buffers,
-            kwarg_keys: tuple[str, ...],
-            kwarg_values: tuple[Any, ...],
-            # Explicit static args for grid/metadata
-            image_grid_thw: Optional[tuple[tuple[int, int, int], ...]] = None,
-            video_grid_thw: Optional[tuple[tuple[int, int, int], ...]] = None,
-            grid_thw: Optional[tuple[tuple[int, int, int], ...]] = None,
-        ):
-            # Reconstruct kwargs
-            kwargs = {}
-            for k, v in zip(kwarg_keys, kwarg_values):
-                if isinstance(v, jax.Array):
-                    kwargs[k] = torch_view(v)
-                else:
-                    kwargs[k] = v
-
-            if image_grid_thw is not None:
-                kwargs["image_grid_thw"] = torch.tensor(image_grid_thw)
-            if video_grid_thw is not None:
-                kwargs["video_grid_thw"] = torch.tensor(video_grid_thw)
-            if grid_thw is not None:
-                kwargs["grid_thw"] = torch.tensor(grid_thw)
-            
-            kwargs["runner_method"] = "embed_multimodal"
-
-            with torchax.default_env():
-                 # We call embed_multimodal on _VllmRunner via forward dispatch
-                 output_from_torch = torch.func.functional_call(
-                    self.model,
-                    torch_view(params_and_buffers),
-                    args=(),
-                    kwargs=kwargs,
-                    tie_weights=False,
-                )
-            
-            if isinstance(output_from_torch, (list, tuple)):
-                 return [jax_view(x) for x in output_from_torch]
-            return jax_view(output_from_torch)
-
-        return embed_multimodal_fun
-
-    def precompile_vision_encoder(self, run_compilation_fn: Callable) -> None:
-        """
-        Precompile vision encoder.
-        For vLLM models, the vision encoder is usually part of the model and JIT compiled
-        during the first run of embed_multimodal. 
-        We provide this method to satisfy the CompilationManager interface.
-        """
-        # TODO: Implement generic precompilation for vLLM models if needed.
-        # For now, we rely on JIT compiling on the first run.
-        pass
-
-    def jit_embed_input_ids_fn(self):
-        @jax.jit
-        def embed_input_ids_fun(params_and_buffers, input_ids):
-             with torchax.default_env():
-                output = torch.func.functional_call(
-                    self.model,
-                    torch_view(params_and_buffers),
-                    args=(),
-                    kwargs={"input_ids": torch_view(input_ids), "runner_method": "embed_input_ids"},
-                    tie_weights=False,
-                )
-             return jax_view(output)
-        return embed_input_ids_fun
-
 
 class VllmModelWrapper:
     """ Wraps a vLLM Pytorch model and let it run on the JAX engine. """
@@ -412,7 +337,8 @@ class VllmModelWrapper:
             grid_thw: Optional[tuple[tuple[int, int, int], ...]] = None,
             **kwargs,
         ):
-            # Convert static args back to tensors torch_kwargs = {}
+            # Convert static args back to tensors
+            torch_kwargs = {}
             if image_grid_thw is not None:
                 torch_kwargs["image_grid_thw"] = torch.tensor(image_grid_thw)
             if video_grid_thw is not None:
@@ -444,6 +370,20 @@ class VllmModelWrapper:
             return jax_view(output_from_torch)
 
         return embed_multimodal_fn
+
+    def jit_embed_input_ids_fn(self):
+        @jax.jit
+        def embed_input_ids_fun(params_and_buffers, input_ids):
+             with torchax.default_env():
+                output = torch.func.functional_call(
+                    self.model,
+                    torch_view(params_and_buffers),
+                    args=(),
+                    kwargs={"input_ids": torch_view(input_ids), "runner_method": "embed_input_ids"},
+                    tie_weights=False,
+                )
+             return jax_view(output)
+        return embed_input_ids_fun
 
     def jit_compute_logits_func(self):
 
