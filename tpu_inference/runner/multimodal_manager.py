@@ -118,7 +118,9 @@ class MultiModalManager:
                 batched_mm_inputs["pixel_values"] = torch.cat(
                     batched_mm_inputs["pixel_values"], dim=0)
 
-            image_grid_thw = ()
+            image_grid_thw = None
+            video_grid_thw = None
+            grid_thw = None
             for key, value in batched_mm_inputs.items():
                 if isinstance(value, torch.Tensor):
                     if key == 'image_grid_thw':
@@ -131,6 +133,18 @@ class MultiModalManager:
                             tuple(row) for row in grid_thw_reshaped.tolist())
 
                         continue
+                    if key == 'video_grid_thw':
+                        grid_thw_tensor = batched_mm_inputs[key]
+                        grid_thw_reshaped = grid_thw_tensor.reshape(-1, 3)
+                        video_grid_thw = tuple(
+                            tuple(row) for row in grid_thw_reshaped.tolist())
+                        continue
+                    if key == 'grid_thw':
+                        grid_thw_tensor = batched_mm_inputs[key]
+                        grid_thw_reshaped = grid_thw_tensor.reshape(-1, 3)
+                        grid_thw = tuple(
+                            tuple(row) for row in grid_thw_reshaped.tolist())
+                        continue
 
                     if value.dtype == torch.bfloat16:
                         batched_mm_inputs[key] = value.to(
@@ -139,6 +153,10 @@ class MultiModalManager:
                         batched_mm_inputs[key] = value.numpy()
             if 'image_grid_thw' in batched_mm_inputs:
                 batched_mm_inputs.pop('image_grid_thw')
+            if 'video_grid_thw' in batched_mm_inputs:
+                batched_mm_inputs.pop('video_grid_thw')
+            if 'grid_thw' in batched_mm_inputs:
+                batched_mm_inputs.pop('grid_thw')
 
             # Run the encoder.
             # `curr_group_outputs` is either of the following:
@@ -148,7 +166,12 @@ class MultiModalManager:
             # (feature_size, hidden_size) in case the feature size is dynamic
             # depending on the input multimodal items.
             curr_group_outputs = self.runner.embed_multimodal_fn(
-                self.runner.state, image_grid_thw, **batched_mm_inputs)
+                self.runner.state,
+                tuple(batched_mm_inputs.keys()),
+                tuple(batched_mm_inputs.values()),
+                image_grid_thw=image_grid_thw,
+                video_grid_thw=video_grid_thw,
+                grid_thw=grid_thw)
 
             sanity_check_mm_encoder_outputs(
                 curr_group_outputs,

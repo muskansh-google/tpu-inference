@@ -16,7 +16,7 @@ import copy
 import time
 from collections.abc import Sequence
 from contextlib import nullcontext
-from typing import Any, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 from unittest.mock import patch
 
 import jax
@@ -72,6 +72,13 @@ class _VllmRunner(torch.nn.Module):
         self.pooler = vllm_model.pooler if has_pooler else None
 
     def forward(self, **kwargs) -> torch.Tensor:
+        runner_method = kwargs.pop("runner_method", None)
+        if runner_method == "embed_multimodal":
+            return self.embed_multimodal(**kwargs)
+        if runner_method == "embed_input_ids":
+            return self.embed_input_ids(kwargs["input_ids"])
+
+
         if "hidden_state" in kwargs:
             return self.compute_logits(kwargs["hidden_state"])
         else:
@@ -95,6 +102,109 @@ class _VllmRunner(torch.nn.Module):
 
     def compute_logits(self, hidden_state: torch.Tensor) -> torch.Tensor:
         return self.vllm_model.compute_logits(hidden_state)
+
+    # This method acts as a dispatcher because different vLLM models expose their
+    # vision encoder through different attribute names (e.g., 'visual', 'vision_tower').
+    # We check each known attribute to ensure compatibility across model architectures.
+    def embed_multimodal(self, **kwargs) -> torch.Tensor:
+        if hasattr(self.vllm_model, "embed_multimodal"):
+            return self.vllm_model.embed_multimodal(**kwargs)
+        if hasattr(self.vllm_model, "visual"):
+            return self.vllm_model.visual(**kwargs)
+        if hasattr(self.vllm_model, "vision_tower"):
+            return self.vllm_model.vision_tower(**kwargs)
+        if hasattr(self.vllm_model, "get_multimodal_embeddings"):
+            return self.vllm_model.get_multimodal_embeddings(**kwargs)
+        raise NotImplementedError("embed_multimodal not implemented for this model")
+
+    def embed_input_ids(self, input_ids: torch.Tensor) -> torch.Tensor:
+        # Helper to get input embeddings (for multimodal patch placement)
+        if hasattr(self.vllm_model, "get_input_embeddings"):
+             return self.vllm_model.get_input_embeddings(input_ids)
+        if hasattr(self.vllm_model, "language_model"):
+             if hasattr(self.vllm_model.language_model, "embed_input_ids"):
+                 return self.vllm_model.language_model.embed_input_ids(input_ids)
+             if hasattr(self.vllm_model.language_model, "get_input_embeddings"):
+                 return self.vllm_model.language_model.get_input_embeddings(input_ids)
+        # Fallback: some models might have model.embed_tokens or similar
+        if hasattr(self.vllm_model, "model") and hasattr(self.vllm_model.model, "embed_tokens"):
+             return self.vllm_model.model.embed_tokens(input_ids)
+        raise NotImplementedError("embed_input_ids not implemented for this model")
+
+    def jit_embed_multimodal_fn(self):
+        @jax.jit(
+            static_argnames=("kwarg_keys", "image_grid_thw", "video_grid_thw", "grid_thw"),
+            # For now, we don't specify out_shardings as the output shape depends
+            # on the model and inputs. Usually it's replicated or sharded.
+            # We let JAX figure it out or rely on subsequent sharding ops.
+            # We let JAX figure it out or rely on subsequent sharding ops.
+        )
+        def embed_multimodal_fun(
+            params_and_buffers,
+            kwarg_keys: tuple[str, ...],
+            kwarg_values: tuple[Any, ...],
+            # Explicit static args for grid/metadata
+            image_grid_thw: Optional[tuple[tuple[int, int, int], ...]] = None,
+            video_grid_thw: Optional[tuple[tuple[int, int, int], ...]] = None,
+            grid_thw: Optional[tuple[tuple[int, int, int], ...]] = None,
+        ):
+            # Reconstruct kwargs
+            kwargs = {}
+            for k, v in zip(kwarg_keys, kwarg_values):
+                if isinstance(v, jax.Array):
+                    kwargs[k] = torch_view(v)
+                else:
+                    kwargs[k] = v
+
+            if image_grid_thw is not None:
+                kwargs["image_grid_thw"] = torch.tensor(image_grid_thw)
+            if video_grid_thw is not None:
+                kwargs["video_grid_thw"] = torch.tensor(video_grid_thw)
+            if grid_thw is not None:
+                kwargs["grid_thw"] = torch.tensor(grid_thw)
+            
+            kwargs["runner_method"] = "embed_multimodal"
+
+            with torchax.default_env():
+                 # We call embed_multimodal on _VllmRunner via forward dispatch
+                 output_from_torch = torch.func.functional_call(
+                    self.model,
+                    torch_view(params_and_buffers),
+                    args=(),
+                    kwargs=kwargs,
+                    tie_weights=False,
+                )
+            
+            if isinstance(output_from_torch, (list, tuple)):
+                 return [jax_view(x) for x in output_from_torch]
+            return jax_view(output_from_torch)
+
+        return embed_multimodal_fun
+
+    def precompile_vision_encoder(self, run_compilation_fn: Callable) -> None:
+        """
+        Precompile vision encoder.
+        For vLLM models, the vision encoder is usually part of the model and JIT compiled
+        during the first run of embed_multimodal. 
+        We provide this method to satisfy the CompilationManager interface.
+        """
+        # TODO: Implement generic precompilation for vLLM models if needed.
+        # For now, we rely on JIT compiling on the first run.
+        pass
+
+    def jit_embed_input_ids_fn(self):
+        @jax.jit
+        def embed_input_ids_fun(params_and_buffers, input_ids):
+             with torchax.default_env():
+                output = torch.func.functional_call(
+                    self.model,
+                    torch_view(params_and_buffers),
+                    args=(),
+                    kwargs={"input_ids": torch_view(input_ids), "runner_method": "embed_input_ids"},
+                    tie_weights=False,
+                )
+             return jax_view(output)
+        return embed_input_ids_fun
 
 
 class VllmModelWrapper:
@@ -286,6 +396,54 @@ class VllmModelWrapper:
             return new_kv_caches, output, []
 
         return step_fun
+
+    def jit_embed_multimodal_fn(self):
+        @jax.jit(
+            static_argnames=("image_grid_thw", "video_grid_thw", "grid_thw"),
+            # For now, we don't specify out_shardings as the output shape depends
+            # on the model and inputs. Usually it's replicated or sharded.
+            # We let JAX figure it out or rely on subsequent sharding ops.
+        )
+        def embed_multimodal_fn(
+            params_and_buffers,
+            # Explicit static args for grid/metadata
+            image_grid_thw: Optional[tuple[tuple[int, int, int], ...]] = None,
+            video_grid_thw: Optional[tuple[tuple[int, int, int], ...]] = None,
+            grid_thw: Optional[tuple[tuple[int, int, int], ...]] = None,
+            **kwargs,
+        ):
+            # Convert static args back to tensors torch_kwargs = {}
+            if image_grid_thw is not None:
+                torch_kwargs["image_grid_thw"] = torch.tensor(image_grid_thw)
+            if video_grid_thw is not None:
+                torch_kwargs["video_grid_thw"] = torch.tensor(video_grid_thw)
+            if grid_thw is not None:
+                torch_kwargs["grid_thw"] = torch.tensor(grid_thw)
+
+            # Convert JAX arrays in kwargs to Torch tensors (via torch_view/conversion)
+            for k, v in kwargs.items():
+                if isinstance(v, jax.Array):
+                    torch_kwargs[k] = torch_view(v)
+                else:
+                    torch_kwargs[k] = v
+
+            with torchax.default_env():
+                 # We call embed_multimodal on _VllmRunner
+                 output_from_torch = torch.func.functional_call(
+                    self.model,
+                    torch_view(params_and_buffers),
+                    args=(),
+                    kwargs=torch_kwargs,
+                    tie_weights=False,
+                )
+            
+            # Wrap output back to JAX
+            # output_from_torch could be a Tensor or list of Tensors
+            if isinstance(output_from_torch, (list, tuple)):
+                 return [jax_view(x) for x in output_from_torch]
+            return jax_view(output_from_torch)
+
+        return embed_multimodal_fn
 
     def jit_compute_logits_func(self):
 

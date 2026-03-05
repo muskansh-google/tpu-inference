@@ -162,6 +162,91 @@ class TestMultiModalManager:
         np.testing.assert_array_equal(np.asarray(passed_pixel_values),
                                       expected_pixel_values)
 
+    def test_execute_mm_encoder_qwen3_vl(self):
+        import torch
+        """Tests _execute_mm_encoder with Qwen3-VL inputs (grid_thw)."""
+        # 1. ===== Setup =====
+        self.runner.is_multimodal_model = True
+        self.mock_get_mm_embed_fn = MagicMock()
+        self.runner.embed_multimodal_fn = self.mock_get_mm_embed_fn
+
+        self.runner.state = MagicMock()
+        # Mock scheduler output
+        mock_scheduler_output = MagicMock(spec=VllmSchedulerOutput)
+        mock_scheduler_output.scheduled_encoder_inputs = {"req-1": [0]}
+
+        # Mock request state
+        dummy_pixel_values = torch.randn(3, 224, 224, dtype=torch.bfloat16)
+        # Qwen3-VL typically uses 'image' modality but with grid_thw
+        # Although in Qwen3-VL it might be 'image' or 'video'
+        # Let's say it is 'image' with 'grid_thw' (which is what we support)
+        dummy_grid_thw = torch.tensor([[1, 2, 3]], dtype=torch.int64)
+        
+        mm_item = MultiModalKwargsItem({
+            "pixel_values": dummy_pixel_values,
+            "grid_thw": dummy_grid_thw,
+        }, "image", "hash1", (0, 10))
+
+        req_state = CachedRequestState(
+            prompt="test",
+            prompt_token_ids=[1, 2, 3],
+            mm_inputs=[mm_item],
+            mm_hashes=[("hash1", mm_item.mm_position)],
+            mm_positions=[mm_item.mm_position],
+            lora_request=None,
+            pooling_params=None,
+            generator=None,
+        )
+        self.runner.requests = {"req-1": req_state}
+
+        # Mock the return value of the multimodal encoder
+        dummy_embedding = jnp.ones((10, 128), dtype=jnp.bfloat16)
+        self.mock_get_mm_embed_fn.return_value = (dummy_embedding, )
+
+        # 2. ===== Act =====
+        self.runner.mm_manager.execute_mm_encoder(mock_scheduler_output)
+
+        # 3. ===== Assert =====
+        # Check if encoder_cache is populated correctly
+        assert "req-1" in self.runner.encoder_cache
+        cached_embedding = self.runner.encoder_cache["req-1"]
+        np.testing.assert_array_equal(np.asarray(cached_embedding),
+                                      np.asarray(dummy_embedding))
+
+        # Check if embed_multimodal_fn was called with correct args
+        self.mock_get_mm_embed_fn.assert_called_once()
+        call_args = self.mock_get_mm_embed_fn.call_args
+
+        # Positional args: (state, keys, values)
+        # Note: the mock receives what is passed to it.
+        # MultimodalManager logic:
+        # runner.embed_multimodal_fn(runner.state, keys, values, image_grid_thw=..., video_grid_thw=..., grid_thw=...)
+        
+        state_arg, keys_arg, values_arg = call_args.args
+        kwargs_arg = call_args.kwargs
+
+        assert state_arg == self.runner.state
+        
+        # Check grid_thw in kwargs
+        assert "grid_thw" in kwargs_arg
+        passed_grid = kwargs_arg["grid_thw"]
+        
+        # It should be converted to tuple of tuples
+        # original tensor [[1,2,3]] -> ((1,2,3),)
+        assert isinstance(passed_grid, tuple)
+        assert passed_grid == ((1, 2, 3), )
+        
+        # Check pixel_values were passed
+        assert "pixel_values" in keys_arg
+        # Verify it's a list/tuple of keys
+        assert isinstance(keys_arg, tuple)
+        pixel_idx = keys_arg.index("pixel_values")
+        passed_pixel_values = values_arg[pixel_idx]
+        
+        # Should be numpy array (original bfloat16 -> float32 -> numpy -> bfloat16)
+        assert isinstance(passed_pixel_values, np.ndarray)
+        assert passed_pixel_values.dtype == jnp.bfloat16
+
     def test_execute_mm_encoder_multiple_images(self):
         import torch
         """Tests _execute_mm_encoder with multiple requests and images."""
