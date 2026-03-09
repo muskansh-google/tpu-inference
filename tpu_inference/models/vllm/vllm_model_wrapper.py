@@ -131,9 +131,20 @@ class _VllmRunner(torch.nn.Module):
              return self.vllm_model.model.embed_tokens(input_ids)
         raise NotImplementedError("embed_input_ids not implemented for this model")
 
+    def get_mrope_input_positions(self, *args, **kwargs):
+        if hasattr(self.vllm_model, "get_mrope_input_positions"):
+            return self.vllm_model.get_mrope_input_positions(*args, **kwargs)
+        raise NotImplementedError("get_mrope_input_positions not implemented for this model")
+
 
 class VllmModelWrapper:
     """ Wraps a vLLM Pytorch model and let it run on the JAX engine. """
+
+    def get_mrope_input_positions(self, *args, **kwargs):
+        if hasattr(self.model.vllm_model, "get_mrope_input_positions"):
+            return self.model.vllm_model.get_mrope_input_positions(*args, **kwargs)
+        raise NotImplementedError("get_mrope_input_positions not implemented for this model")
+
 
     rng: PRNGKey
     mesh: Mesh
@@ -147,9 +158,138 @@ class VllmModelWrapper:
         self.vllm_config.quant_config = get_tpu_quantization_config(
             self.vllm_config, self.mesh)
         self._apply_pp_patch()
+        self._patch_vocab_parallel_embedding_compile()
+        self._patch_vllm_vision_sdpa_for_torchax()
 
         MultiHeadLatentAttentionWrapper.register_oot(
             VllmTPUMultiHeadLatentAttentionWrapper)
+
+    def _patch_vocab_parallel_embedding_compile(self):
+        # TorchAx compiles the entire model execution into XLA using jax.jit.
+        # We unwrap the @torch.compile decorator to expose the original function.
+        import vllm.model_executor.layers.vocab_parallel_embedding as vpe
+        if hasattr(vpe.get_masked_input_and_mask, "_orig_mod"):
+            vpe.get_masked_input_and_mask = vpe.get_masked_input_and_mask._orig_mod
+
+    def _patch_vllm_vision_sdpa_for_torchax(self):
+        """
+        vLLM's Vision components often attempt to use C++ op dispatches
+        like `torch.ops.vllm.torch_sdpa_wrapper`. Under the TorchAx JAX 
+        environment, tensors are traced JAX arrays masquerading as PyTorch 
+        tensors. Passing them to a custom C++ op that expects raw ATen Tensors 
+        throws an AssertionError: "torchax Tensors can only do math within the 
+        torchax environment".
+        """
+        import vllm.model_executor.layers.attention.mm_encoder_attention as mm_attn
+        
+        # vLLM's CustomOp dispatch defaults to `forward_native` for TPU, which
+        # hardcodes a fallback to `_forward_sdpa`. By aliasing `forward_tpu`
+        # to `forward_cuda`, we allow the vision encoder to dispatch to `_forward_fa`
+        # (Flash Attention) during TPU execution since get_vit_attn_backend returns FLASH_ATTN.
+        mm_attn.MMEncoderAttention.forward_tpu = mm_attn.MMEncoderAttention.forward_cuda
+        logger.info("Successfully patched vLLM's MMEncoderAttention.forward_tpu for Flash Attention compatibility.")
+
+    def _patch_qwen3_vl_stateless_deepstack(self, vllm_model):
+        """
+        Qwen3-VL uses `self.deepstack_input_embeds` to pass state between `embed_input_ids` 
+        and `forward`. This breaks TorchAx functional tracking. This patch intercepts both 
+        calls on the loaded model instance to pack/unpack this state into `inputs_embeds`.
+        """
+        try:
+            from vllm.model_executor.models.qwen3_vl import Qwen3VLForConditionalGeneration
+        except ImportError:
+            return
+            
+        if not isinstance(vllm_model, Qwen3VLForConditionalGeneration):
+            return
+
+        import torch
+        from vllm.distributed import get_pp_group
+
+        orig_embed_input_ids = vllm_model.embed_input_ids
+        orig_forward = vllm_model.forward
+
+        def patched_embed_input_ids(*args, **kwargs):
+            inputs_embeds = orig_embed_input_ids(*args, **kwargs)
+            
+            # Pack deepstack_input_embeds into inputs_embeds for stateless execution
+            deepstack_input_embeds = vllm_model.deepstack_input_embeds
+            if deepstack_input_embeds is not None:
+                packed = deepstack_input_embeds.transpose(0, 1).reshape(inputs_embeds.size(0), -1)
+                inputs_embeds = torch.cat([inputs_embeds, packed], dim=-1)
+            
+            return inputs_embeds
+
+        def patched_forward(
+            input_ids: torch.Tensor | None,
+            positions: torch.Tensor,
+            intermediate_tensors = None,
+            inputs_embeds: torch.Tensor | None = None,
+            **kwargs
+        ):
+            if inputs_embeds is not None and get_pp_group().is_first_rank:
+                if vllm_model.use_deepstack and inputs_embeds.shape[-1] > vllm_model.visual_dim:
+                    packed_dim = inputs_embeds.shape[-1] - vllm_model.visual_dim
+                    deepstack_packed = inputs_embeds[..., vllm_model.visual_dim:]
+                    inputs_embeds = inputs_embeds[..., :vllm_model.visual_dim]
+                    
+                    deepstack_input_embeds = {}
+                    per_level_dim = packed_dim // vllm_model.deepstack_num_level
+                    for idx, layer_idx in enumerate(
+                        vllm_model.config.vision_config.deepstack_visual_indexes
+                    ):
+                        start = idx * per_level_dim
+                        end = (idx + 1) * per_level_dim
+                        
+                        from torchax.tensor import View
+                        sliced_tensor = deepstack_packed[..., start:end]
+                        if not isinstance(sliced_tensor, View) and not isinstance(sliced_tensor, torch.Tensor):
+                            sliced_tensor = View(sliced_tensor)
+                        elif isinstance(sliced_tensor, torch.Tensor) and "torchax.tensor" not in str(type(sliced_tensor)):
+                            sliced_tensor = View(sliced_tensor)
+
+                        deepstack_input_embeds[f"deepstack_input_embeds_{layer_idx}"] = (
+                            sliced_tensor
+                        )
+                    
+                    vllm_model._set_deepstack_input_embeds(deepstack_input_embeds)
+            
+            return orig_forward(
+                input_ids=input_ids,
+                positions=positions,
+                intermediate_tensors=intermediate_tensors,
+                inputs_embeds=inputs_embeds,
+                **kwargs
+            )
+
+        def patched_get_deepstack(num_tokens: int):
+            if not hasattr(vllm_model, "_deepstack_tensors") or not vllm_model._deepstack_tensors:
+                return None
+            from vllm.model_executor.layers.interfaces import IntermediateTensors
+            return IntermediateTensors(vllm_model._deepstack_tensors)
+
+        def patched_set_deepstack(deepstack_input_embeds):
+            vllm_model._deepstack_tensors = {}
+            if isinstance(deepstack_input_embeds, list) or getattr(type(deepstack_input_embeds), '__name__', '') == 'tuple':
+                for idx, t in enumerate(deepstack_input_embeds):
+                    vllm_model._deepstack_tensors[f"deepstack_input_embeds_{vllm_model.config.vision_config.deepstack_visual_indexes[idx]}"] = t
+            elif isinstance(deepstack_input_embeds, dict):
+                vllm_model._deepstack_tensors = deepstack_input_embeds
+            else:
+                for idx in range(vllm_model.deepstack_num_level):
+                    vllm_model._deepstack_tensors[f"deepstack_input_embeds_{vllm_model.config.vision_config.deepstack_visual_indexes[idx]}"] = deepstack_input_embeds[idx]
+
+        def patched_clear_deepstack(num_tokens: int):
+            vllm_model._deepstack_tensors = None
+
+        # Bind the patched methods to the instance natively
+        vllm_model.embed_input_ids = patched_embed_input_ids
+        vllm_model.forward = patched_forward
+        vllm_model._get_deepstack_input_embeds = patched_get_deepstack
+        vllm_model._set_deepstack_input_embeds = patched_set_deepstack
+        vllm_model._clear_deepstack_input_embeds = patched_clear_deepstack
+        
+        logger.info("Successfully patched Qwen3VLForConditionalGeneration for stateless deepstack execution.")
 
     def _apply_pp_patch(self):
         # patch `get_pp_group` in vLLM to jax's get_pp_group.
@@ -220,6 +360,10 @@ class VllmModelWrapper:
         # function can calculate the hidden_state and logits.
         with load_context, jax_context:
             vllm_model = vllm_get_model(vllm_config=vllm_config_for_load)
+            
+        # Patch Qwen3-VL specific stateful operations
+        self._patch_qwen3_vl_stateless_deepstack(vllm_model)
+
         lora_manager = None
         if vllm_config_for_load.lora_config is not None:
             # Replace layers in the model with LoRA layers.
@@ -301,10 +445,10 @@ class VllmModelWrapper:
                     self.model,
                     torch_view(params_and_buffers),
                     kwargs={
-                        "input_ids": torch_view(input_ids),
+                        "input_ids": torch_view(input_ids) if input_ids is not None else None,
                         "positions": torch_view(input_positions),
                         "intermediate_tensors": intermediate_tensors,
-                        "inputs_embeds": None,
+                        "inputs_embeds": torch_view(input_embeds) if input_embeds is not None else None,
                     },
                     tie_weights=False,
                 )
@@ -324,19 +468,24 @@ class VllmModelWrapper:
 
     def jit_embed_multimodal_fn(self):
         @jax.jit(
-            static_argnames=("image_grid_thw", "video_grid_thw", "grid_thw"),
+            static_argnames=("kwargs_keys", "image_grid_thw", "video_grid_thw", "grid_thw"),
             # For now, we don't specify out_shardings as the output shape depends
             # on the model and inputs. Usually it's replicated or sharded.
             # We let JAX figure it out or rely on subsequent sharding ops.
         )
         def embed_multimodal_fn(
             params_and_buffers,
+            kwargs_keys: tuple[str, ...],
+            kwargs_values: tuple[Any, ...],
             # Explicit static args for grid/metadata
             image_grid_thw: Optional[tuple[tuple[int, int, int], ...]] = None,
             video_grid_thw: Optional[tuple[tuple[int, int, int], ...]] = None,
             grid_thw: Optional[tuple[tuple[int, int, int], ...]] = None,
             **kwargs,
         ):
+            # Combine the passed kwargs
+            kwargs.update(dict(zip(kwargs_keys, kwargs_values)))
+
             # Convert static args back to tensors
             torch_kwargs = {}
             if image_grid_thw is not None:
@@ -352,6 +501,8 @@ class VllmModelWrapper:
                     torch_kwargs[k] = torch_view(v)
                 else:
                     torch_kwargs[k] = v
+
+            torch_kwargs["runner_method"] = "embed_multimodal"
 
             with torchax.default_env():
                  # We call embed_multimodal on _VllmRunner
@@ -373,7 +524,7 @@ class VllmModelWrapper:
 
     def jit_embed_input_ids_fn(self):
         @jax.jit
-        def embed_input_ids_fun(params_and_buffers, input_ids):
+        def embed_input_ids_fun(params_and_buffers, input_ids, *args, **kwargs):
              with torchax.default_env():
                 output = torch.func.functional_call(
                     self.model,
