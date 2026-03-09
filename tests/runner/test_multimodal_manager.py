@@ -152,10 +152,10 @@ class TestMultiModalManager:
         assert "image_grid_thw" in kwargs_arg
         grid_arg = kwargs_arg["image_grid_thw"]
         assert grid_arg == ((1, 1, 1), )
-        assert "pixel_values" in kwargs_arg
+        assert "pixel_values" in keys_arg
+        pixel_idx = keys_arg.index("pixel_values")
+        passed_pixel_values = values_arg[pixel_idx]
 
-        # Verify the pixel values tensor passed to the mock
-        passed_pixel_values = kwargs_arg['pixel_values']
         assert isinstance(passed_pixel_values, np.ndarray)
         assert passed_pixel_values.dtype == jnp.bfloat16
 
@@ -186,8 +186,10 @@ class TestMultiModalManager:
         dummy_grid_thw = torch.tensor([[1, 2, 3]], dtype=torch.int64)
         
         mm_item = MultiModalKwargsItem({
-            "pixel_values": dummy_pixel_values,
-            "grid_thw": dummy_grid_thw,
+            "pixel_values":
+            MultiModalFieldElem(dummy_pixel_values, MultiModalBatchedField()),
+            "grid_thw":
+            MultiModalFieldElem(dummy_grid_thw, MultiModalBatchedField()),
         })
 
         req_state = CachedRequestState(
@@ -199,7 +201,7 @@ class TestMultiModalManager:
             num_computed_tokens=0,
             mm_features=[
                 MultiModalFeatureSpec(data=mm_item,
-                                      identifier="hash1",
+                                      identifier="req-1",
                                       modality="image",
                                       mm_position=PlaceholderRange(offset=0,
                                                                    length=10))
@@ -357,9 +359,10 @@ class TestMultiModalManager:
         assert "image_grid_thw" in kwargs_arg
         grid_arg = kwargs_arg["image_grid_thw"]
         assert grid_arg == ((1, 1, 1), (1, 2, 2))
-        assert "pixel_values" in kwargs_arg
+        assert "pixel_values" in keys_arg
+        pixel_idx = keys_arg.index("pixel_values")
+        passed_pixel_values = values_arg[pixel_idx]
 
-        passed_pixel_values = kwargs_arg['pixel_values']
         assert passed_pixel_values.shape == (2, 3, 224, 224)
 
         expected_pixel_values = torch.stack([px_1, px_2], dim=0).to(
