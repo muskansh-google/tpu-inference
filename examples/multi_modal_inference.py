@@ -22,6 +22,7 @@ from vllm import LLM, EngineArgs, SamplingParams
 from vllm.assets.image import ImageAsset
 from vllm.multimodal.image import convert_image_mode
 from vllm.utils.argparse_utils import FlexibleArgumentParser
+from vllm.assets.video import VideoAsset
 
 
 class ModelRequestData(NamedTuple):
@@ -30,16 +31,15 @@ class ModelRequestData(NamedTuple):
     stop_token_ids: Optional[list[int]] = None
 
 
-# Currently Qwen2.5-VL is the only supported multi-modal
-# Qwen2.5-VL
-def run_qwen2_5_vl(questions: list[str], modality: str,
+# Currently Qwen2.5-VL and Qwen3-VL use the same chat template for vision
+def run_qwen_vl(questions: list[str], modality: str,
                    args) -> ModelRequestData:
     engine_args = EngineArgs(
         model=args.model,
         max_model_len=args.max_model_len,
         tensor_parallel_size=args.tensor_parallel_size,
         gpu_memory_utilization=args.gpu_memory_utilization,
-        max_num_seqs=5,
+        max_num_seqs=2, # lowered to prevent OOM
         mm_processor_kwargs={
             "size": {
                 "longest_edge": 1003520,
@@ -69,7 +69,8 @@ def run_qwen2_5_vl(questions: list[str], modality: str,
 
 
 model_example_map = {
-    "qwen2_5_vl": run_qwen2_5_vl,
+    "qwen2_5_vl": run_qwen_vl,
+    "qwen3_vl": run_qwen_vl,
 }
 
 
@@ -96,19 +97,18 @@ def get_multi_modal_input(args):
             "questions": img_questions,
         }
 
-    # NOTE: not used for now, saved for future reference
-    # if args.modality == "video":
-    #     # Input video and question
-    #     video = VideoAsset(name="baby_reading",
-    #                        num_frames=args.num_frames).np_ndarrays
-    #     metadata = VideoAsset(name="baby_reading",
-    #                           num_frames=args.num_frames).metadata
-    #     vid_questions = ["Why is this video funny?"]
+    if args.modality == "video":
+        # Input video and question
+        video = VideoAsset(name="baby_reading",
+                           num_frames=args.num_frames).np_ndarrays
+        metadata = VideoAsset(name="baby_reading",
+                              num_frames=args.num_frames).metadata
+        vid_questions = ["Why is this video funny?"]
 
-    #     return {
-    #         "data": video,
-    #         "questions": vid_questions,
-    #     }
+        return {
+            "data": video,
+            "questions": vid_questions,
+        }
 
     msg = f"Modality {args.modality} is not supported."
     raise ValueError(msg)
@@ -152,7 +152,7 @@ def parse_args():
     parser.add_argument(
         "--gpu-memory-utilization",
         type=float,
-        default=0.5,
+        default=0.9,
         help="GPU memory utilization",
     )
 
@@ -228,10 +228,9 @@ def main(args):
     req_data.engine_args.limit_mm_per_prompt = default_limits | dict(
         req_data.engine_args.limit_mm_per_prompt or {})
 
-    engine_args = asdict(req_data.engine_args) | {
-        "seed": args.seed,
-        "disable_mm_preprocessor_cache": args.disable_mm_preprocessor_cache,
-    }
+    engine_args = asdict(req_data.engine_args)
+    if args.seed is not None:
+        engine_args["seed"] = args.seed
     llm = LLM(**engine_args)
 
     # Don't want to check the flag multiple times, so just hijack `prompts`.

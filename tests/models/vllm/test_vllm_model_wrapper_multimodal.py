@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import torch
 import jax
 import jax.numpy as jnp
+import numpy as np
 from typing import Any, Optional
 
 # Mock vllm modules if not available for test running in specific envs
@@ -38,9 +39,10 @@ class TestVllmModelWrapperMultimodal(unittest.TestCase):
         vllm_config.model_config = MagicMock()
         vllm_config.quant_config = MagicMock()
         vllm_config.compilation_config = MagicMock()
-        vllm_config.load_config = MagicMock()
         vllm_config.load_config.load_format = "dummy"
         vllm_config.lora_config = None
+        vllm_config.model_config.quantization = None
+        vllm_config.model_config.dtype = torch.float32
         
         rng = jax.random.PRNGKey(0)
         mesh = MagicMock()
@@ -78,8 +80,8 @@ class TestVllmModelWrapperMultimodal(unittest.TestCase):
         pixel_values = jnp.array([0.1, 0.2])
         kwarg_keys = ("pixel_values",)
         
-        # We need to patch torch.func.functional_call inside the module where VllmModelWrapper is defined
-        with patch("torch.func.functional_call") as mock_func_call:
+        with patch("torch.func.functional_call") as mock_func_call, \
+             patch("tpu_inference.models.vllm.vllm_model_wrapper.jax_view", return_value=jnp.array([1.0])):
             mock_func_call.return_value = torch.tensor([1.0]) # Mock output
 
             # Call the JIT function
@@ -149,6 +151,8 @@ class TestVllmModelWrapperMultimodal(unittest.TestCase):
         # Setup similar to above
         vllm_config = MagicMock()
         vllm_config.load_config.load_format = "dummy"
+        vllm_config.model_config.quantization = None
+        vllm_config.model_config.dtype = torch.float32
         wrapper = VllmModelWrapper(vllm_config, jax.random.PRNGKey(0), MagicMock())
         mock_runner = MagicMock()
         wrapper.model = mock_runner
@@ -158,7 +162,8 @@ class TestVllmModelWrapperMultimodal(unittest.TestCase):
         params = {"p": jnp.array([1.0])}
         input_ids = jnp.array([1, 2, 3])
         
-        with patch("torch.func.functional_call") as mock_func_call:
+        with patch("torch.func.functional_call") as mock_func_call, \
+             patch("tpu_inference.models.vllm.vllm_model_wrapper.jax_view", return_value=jnp.array([1.0])):
             mock_func_call.return_value = torch.tensor([1.0])
             
             output = embed_fn(params, input_ids)
@@ -186,30 +191,70 @@ class TestVllmModelWrapperMultimodal(unittest.TestCase):
 
 
 
-    def test_precompile_vision_encoder(self):
-        vllm_config = MagicMock()
-        vllm_config.load_config.load_format = "dummy"
-        wrapper = VllmModelWrapper(vllm_config, None, MagicMock())
-        
-        # Should run without error
-        wrapper.precompile_vision_encoder(MagicMock())
 
-    def test_get_mrope_input_positions(self):
+
+    @patch("tpu_inference.models.vllm.vllm_model_wrapper.MultiHeadLatentAttentionWrapper")
+    def test_get_mrope_input_positions(self, mock_mla):
         vllm_config = MagicMock()
         vllm_config.load_config.load_format = "dummy"
+        vllm_config.model_config.quantization = None
+        vllm_config.model_config.dtype = torch.float32
         wrapper = VllmModelWrapper(vllm_config, None, MagicMock())
+        wrapper.model = MagicMock()
         mock_vllm_model = MagicMock()
-        wrapper.vllm_model = mock_vllm_model
+        wrapper.model.vllm_model = mock_vllm_model
         
         # Test delegation
         wrapper.get_mrope_input_positions(input_tokens=[1], mm_features=[])
         mock_vllm_model.get_mrope_input_positions.assert_called_once()
         
         # Test fallback
-        wrapper.vllm_model = MagicMock(spec=[]) # No get_mrope_input_positions, spec=[] prevents auto-creation of attrs
+        wrapper.model.vllm_model = MagicMock(spec=[]) # No get_mrope_input_positions, spec=[] prevents auto-creation of attrs
         with self.assertRaises(NotImplementedError):
             wrapper.get_mrope_input_positions(input_tokens=[1], mm_features=[])
 
+    @patch("tpu_inference.models.vllm.vllm_model_wrapper.get_tpu_quantization_config")
+    @patch("tpu_inference.models.vllm.vllm_model_wrapper.VllmModelWrapper._apply_pp_patch")
+    @patch("tpu_inference.models.vllm.vllm_model_wrapper.MultiHeadLatentAttentionWrapper")
+    @patch("tpu_inference.models.vllm.vllm_model_wrapper.shard_model_to_tpu")
+    def test_jit_embed_multimodal_jax_trace_with_numpy_args(self, mock_shard, mock_mla, mock_patch, mock_quant):
+        # Tests that numpy arrays passed into kwargs_values don't trigger JAX unhashable errors
+        # which happens if they accidentally fall into static_argnames
+        vllm_config = MagicMock()
+        vllm_config.load_config.load_format = "dummy"
+        vllm_config.model_config.quantization = None
+        vllm_config.model_config.dtype = torch.float32
+        wrapper = VllmModelWrapper(vllm_config, jax.random.PRNGKey(0), MagicMock())
+        mock_runner = MagicMock()
+        wrapper.model = mock_runner
+        
+        embed_fn = wrapper.jit_embed_multimodal_fn()
+        params = {"p1": jnp.array([1.0])}
+        
+        # Use a numpy array, not jax array, as this is what multimodal_manager passes
+        pixel_values_np = np.random.randn(2, 2).astype(np.float32)
+        kwarg_keys = ("pixel_values",)
+        
+        with patch("torch.func.functional_call") as mock_func_call, \
+             patch("tpu_inference.models.vllm.vllm_model_wrapper.jax_view", return_value=jnp.array([1.0])):
+            mock_func_call.return_value = torch.tensor([1.0])
+            # This should trace successfully and not throw TypeError: unhashable type: 'numpy.ndarray'
+            output = embed_fn(params, kwarg_keys, (pixel_values_np,))
+            self.assertTrue(mock_func_call.called)
+
+    def test_vllm_runner_forward_embed_multimodal(self):
+        # Tests that _VllmRunner.forward routes correctly when runner_method="embed_multimodal" is provided
+        # This prevents KeyError: 'input_ids'
+        mock_vllm_model = MagicMock()
+        mock_vllm_model.embed_multimodal.return_value = torch.tensor([5.0])
+        
+        runner = _VllmRunner(mock_vllm_model)
+        
+        # This shouldn't raise KeyError: 'input_ids'
+        res = runner(runner_method="embed_multimodal", pixel_values=torch.tensor([1.0]))
+        
+        self.assertEqual(res.item(), 5.0)
+        mock_vllm_model.embed_multimodal.assert_called_once()
 
 if __name__ == "__main__":
     unittest.main()

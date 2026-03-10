@@ -604,18 +604,29 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
                                "after execute_model() returns None.")
         reqs = self.input_batch.num_reqs
         toks = scheduler_output.total_num_scheduled_tokens
+        print(f"DEBUG_TPU_RUNNER: execute_model start. num_scheduled_tokens={scheduler_output.num_scheduled_tokens}, total={toks}, input_batch.num_reqs={reqs}", flush=True)
         with jax.set_mesh(self.mesh), jax.profiler.TraceAnnotation(
                 f"execute_model: {reqs} reqs, {toks} toks"):
-            output = self._execute_model(scheduler_output,
-                                         intermediate_tensors)
+            try:
+                output = self._execute_model(scheduler_output,
+                                             intermediate_tensors)
+            except Exception as e:
+                import traceback
+                print(f"DEBUG_TPU_RUNNER: EXCEPTION in _execute_model: {e}\n{traceback.format_exc()}", flush=True)
+                raise
+        print(f"DEBUG_TPU_RUNNER: _execute_model returned type={type(output)}", flush=True)
+        if hasattr(output, "req_ids"):
+            print(f"DEBUG_TPU_RUNNER: _execute_model returned req_ids={output.req_ids}", flush=True)
         return output
 
     def sample_tokens(
         self,
         grammar_output: "GrammarOutput | None",
     ) -> ModelRunnerOutput | AsyncTPUModelRunnerOutput:
+        print(f"DEBUG_TPU_RUNNER: sample_tokens start. execute_model_state is None? {self.execute_model_state is None}", flush=True)
         if self.execute_model_state is None:
             # This can happen in pipeline parallel case.
+            print(f"DEBUG_TPU_RUNNER: sample_tokens returning EMPTY_MODEL_RUNNER_OUTPUT", flush=True)
             return EMPTY_MODEL_RUNNER_OUTPUT
 
         (scheduler_output, attn_metadata, input_ids, hidden_states, logits,
@@ -737,7 +748,19 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
     ) -> JaxIntermediateTensors | ModelRunnerOutput | None:
         self.persistent_batch_manager.update_states(
             scheduler_output, self.get_mrope_input_positions_fn)
-        if not scheduler_output.total_num_scheduled_tokens:
+        if sum(scheduler_output.num_scheduled_tokens.values()) == 0:
+            from vllm.v1.outputs import make_empty_encoder_model_runner_output
+            
+            if len(scheduler_output.num_scheduled_tokens) > 0:
+                if self.is_multimodal_model:
+                    self.mm_manager.execute_mm_encoder(scheduler_output)
+                return make_empty_encoder_model_runner_output(scheduler_output)
+            
+            if len(scheduler_output.num_scheduled_tokens) > 0:
+                if self.is_multimodal_model:
+                    self.mm_manager.execute_mm_encoder(scheduler_output)
+                return make_empty_encoder_model_runner_output(scheduler_output)
+
             if has_kv_transfer_group():
                 return self.kv_connector_no_forward(scheduler_output,
                                                     self.vllm_config)

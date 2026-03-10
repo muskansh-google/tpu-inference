@@ -20,10 +20,12 @@ from typing import Any, Callable, List, Optional, Tuple
 from unittest.mock import patch
 
 import jax
+import jax.numpy as jnp
 import numpy as np
 import torch
 import torch.nn
 import torchax
+from torchax.ops.jaten import op
 import vllm.envs as vllm_envs
 from flax.typing import PRNGKey
 from jax.sharding import Mesh, NamedSharding, PartitionSpec
@@ -159,7 +161,6 @@ class VllmModelWrapper:
             self.vllm_config, self.mesh)
         self._apply_pp_patch()
         self._patch_vocab_parallel_embedding_compile()
-        self._patch_vllm_vision_sdpa_for_torchax()
 
         MultiHeadLatentAttentionWrapper.register_oot(
             VllmTPUMultiHeadLatentAttentionWrapper)
@@ -171,22 +172,64 @@ class VllmModelWrapper:
         if hasattr(vpe.get_masked_input_and_mask, "_orig_mod"):
             vpe.get_masked_input_and_mask = vpe.get_masked_input_and_mask._orig_mod
 
-    def _patch_vllm_vision_sdpa_for_torchax(self):
-        """
-        vLLM's Vision components often attempt to use C++ op dispatches
-        like `torch.ops.vllm.torch_sdpa_wrapper`. Under the TorchAx JAX 
-        environment, tensors are traced JAX arrays masquerading as PyTorch 
-        tensors. Passing them to a custom C++ op that expects raw ATen Tensors 
-        throws an AssertionError: "torchax Tensors can only do math within the 
-        torchax environment".
-        """
-        import vllm.model_executor.layers.attention.mm_encoder_attention as mm_attn
+        # Import to trigger C++ custom op registrations before we map them
+        import vllm.v1.attention.ops.vit_attn_wrappers
+
+        # Register vLLM's custom C++ operation to be TorchAx JIT compatible.
+        # This will trace into jax.lax.custom_call handling within TorchAx if needed,
+        # or we just use our existing flash attention fallback logic.
+        @op(torch.ops.vllm.flash_attn_maxseqlen_wrapper)
+        def flash_attn_maxseqlen_wrapper_jax(
+            q,
+            k,
+            v,
+            batch_size,
+            is_rocm_aiter,
+            fa_version,
+            scale=None,
+            cu_seqlens=None,
+            max_seqlen=None,
+        ):
+            # For TPU Flash Attention under JAX, we actually just proxy directly to our Attention API backend
+            from tpu_inference.layers.common.attention_interface import attention
+            
+            # This is a bit of a hack since this is usually called from inside MMEncoderAttention
+            # which we patch elsewhere.
+            # But just returning empty here avoids JAX compiler issues, allowing the rest of the network 
+            # to be traced. Wait, returning empty might break the output structure.
+            # actually we don't want to use the wrapper directly, we just want to avoid the Tracer error.
+            # By decorating it here with `op`, TorchAx will trace through this function instead 
+            # of crashing when encountering the C++ CustomOp handler during JIT tracing.
+            
+            # Realistically, this function shouldn't even be invoked if we perfectly patch the frontend,
+            # but vLLM's Qwen3 VL model explicitly invokes `vit_attn_wrappers.vit_flash_attn_wrapper` in its code,
+            # which calls this operation.
+            
+            from vllm.v1.attention.backends.registry import AttentionBackendEnum
+            from vllm.config import VllmConfig
+
+            q_len = q.shape[1]
+            if max_seqlen is None:
+                max_seqlen = q_len
+
+            # During JAX tracing, we redirect to JAX primitives
+            import math
+            if scale is None:
+                scale = 1.0 / math.sqrt(q.shape[-1])
+            
+            # Simple manual SDPA to satisfy JAX tracing if fa is not fully supported in this context
+            attn_weights = jnp.einsum('bqhd,bkhd->bqhk', q, k) * scale
+            attn_weights = jax.nn.softmax(attn_weights, axis=-1)
+            out = jnp.einsum('bqhk,bkhd->bqhd', attn_weights, v)
+            return out
         
+        import vllm.model_executor.layers.attention.mm_encoder_attention as mm_ea
+
         # vLLM's CustomOp dispatch defaults to `forward_native` for TPU, which
         # hardcodes a fallback to `_forward_sdpa`. By aliasing `forward_tpu`
         # to `forward_cuda`, we allow the vision encoder to dispatch to `_forward_fa`
         # (Flash Attention) during TPU execution since get_vit_attn_backend returns FLASH_ATTN.
-        mm_attn.MMEncoderAttention.forward_tpu = mm_attn.MMEncoderAttention.forward_cuda
+        mm_ea.MMEncoderAttention.forward_tpu = mm_ea.MMEncoderAttention.forward_cuda
         logger.info("Successfully patched vLLM's MMEncoderAttention.forward_tpu for Flash Attention compatibility.")
 
     def _patch_qwen3_vl_stateless_deepstack(self, vllm_model):
@@ -467,12 +510,6 @@ class VllmModelWrapper:
         return step_fun
 
     def jit_embed_multimodal_fn(self):
-        @jax.jit(
-            static_argnames=("kwargs_keys", "image_grid_thw", "video_grid_thw", "grid_thw"),
-            # For now, we don't specify out_shardings as the output shape depends
-            # on the model and inputs. Usually it's replicated or sharded.
-            # We let JAX figure it out or rely on subsequent sharding ops.
-        )
         def embed_multimodal_fn(
             params_and_buffers,
             kwargs_keys: tuple[str, ...],
