@@ -334,6 +334,129 @@ class VllmModelWrapper:
         
         logger.info("Successfully patched Qwen3VLForConditionalGeneration for stateless deepstack execution.")
 
+    def _patch_qwen3_vision_transformer(self, vllm_model):
+        try:
+            from vllm.model_executor.models.qwen3_vl import Qwen3VLForConditionalGeneration
+            from vllm.model_executor.layers.attention.mm_encoder_attention import MMEncoderAttention
+        except ImportError:
+            return
+            
+        if not isinstance(vllm_model, Qwen3VLForConditionalGeneration):
+            return
+
+        import jax
+        import torch
+        import numpy as np
+        from torchax.interop import torch_view, jax_view
+
+        vision_tower = vllm_model.visual
+
+        def patched_forward(self_vt, x: torch.Tensor, grid_thw: torch.Tensor | list[list[int]]) -> torch.Tensor:
+            # PART 1: Eager Setup
+            hidden_states = x.to(device=self_vt.device, dtype=self_vt.dtype, non_blocking=True)
+            hidden_states = self_vt.patch_embed(hidden_states)
+
+            if isinstance(grid_thw, list):
+                grid_thw_list = grid_thw
+                grid_thw_np = np.array(grid_thw, dtype=np.int32)
+            else:
+                grid_thw_list = grid_thw.tolist()
+                grid_thw_np = grid_thw.cpu().numpy()
+
+            pos_embeds = self_vt.fast_pos_embed_interpolate(grid_thw_list)
+            hidden_states = hidden_states + pos_embeds
+            
+            # fast_pos_embed_interpolate and rot_pos_emb use PyTorch, producing CPU tensors.
+            rotary_pos_emb_cos_cpu, rotary_pos_emb_sin_cpu = self_vt.rot_pos_emb(grid_thw_list)
+
+            cu_seqlens_np = np.repeat(grid_thw_np[:, 1] * grid_thw_np[:, 2], grid_thw_np[:, 0]).cumsum(
+                axis=0, dtype=np.int32
+            )
+            cu_seqlens_np = np.concatenate([np.zeros(1, dtype=np.int32), cu_seqlens_np])
+            
+            sequence_lengths_np = MMEncoderAttention.maybe_compute_sequence_lengths(
+                self_vt.attn_backend, cu_seqlens_np
+            )
+            max_seqlen_int = MMEncoderAttention.compute_max_seqlen(self_vt.attn_backend, cu_seqlens_np)
+            cu_seqlens_np = MMEncoderAttention.maybe_recompute_cu_seqlens(
+                self_vt.attn_backend,
+                cu_seqlens_np,
+                self_vt.hidden_size,
+                self_vt.tp_size,
+            )
+
+            # PART 2: Data Marshaling (Convert CPU PyTorch/NumPy to JAX un-traced arrays)
+            cu_seqlens_jax = jax.numpy.array(cu_seqlens_np, dtype=jax.numpy.int32)
+            if sequence_lengths_np is not None:
+                sequence_lengths_jax = jax.numpy.array(sequence_lengths_np, dtype=jax.numpy.int32)
+            else:
+                sequence_lengths_jax = None
+
+            max_seqlen_jax = jax.numpy.array(max_seqlen_int, dtype=jax.numpy.int32)
+            
+            rotary_pos_emb_cos_jax = jax.device_put(jax.numpy.array(rotary_pos_emb_cos_cpu.resolve_conj().numpy()))
+            rotary_pos_emb_sin_jax = jax.device_put(jax.numpy.array(rotary_pos_emb_sin_cpu.resolve_conj().numpy()))
+
+            hidden_states = hidden_states.unsqueeze(1)
+
+            # PART 3: Granular JIT Function
+            @jax.jit
+            def _jitted_blocks(
+                hs_jax,
+                cu_seqlens_j,
+                rot_cos_j,
+                rot_sin_j,
+                max_seqlen_j,
+                seq_lens_j
+            ):
+                import torchax
+                from torchax.interop import torch_view, jax_view
+                with torchax.default_env():
+                    hs_t = torch_view(hs_jax)
+                    cu_seqlens_t = torch_view(cu_seqlens_j)
+                    rot_cos_t = torch_view(rot_cos_j)
+                    rot_sin_t = torch_view(rot_sin_j)
+                    max_seqlen_t = torch_view(max_seqlen_j)
+                    seq_lens_t = torch_view(seq_lens_j) if seq_lens_j is not None else None
+
+                    deepstack_feature_lists = []
+                    for layer_num, blk in enumerate(self_vt.blocks):
+                        hs_t = blk(
+                            hs_t,
+                            cu_seqlens=cu_seqlens_t,
+                            rotary_pos_emb_cos=rot_cos_t,
+                            rotary_pos_emb_sin=rot_sin_t,
+                            max_seqlen=max_seqlen_t,
+                            sequence_lengths=seq_lens_t,
+                        )
+                        if layer_num in self_vt.deepstack_visual_indexes:
+                            deepstack_merger_idx = self_vt.deepstack_visual_indexes.index(layer_num)
+                            deepstack_feature = self_vt.deepstack_merger_list[deepstack_merger_idx](hs_t)
+                            deepstack_feature_lists.append(deepstack_feature)
+                    
+                    hs_t = self_vt.merger(hs_t)
+                    return jax_view(hs_t), tuple([jax_view(f) for f in deepstack_feature_lists])
+
+            # PART 4: Execute JIT & Return
+            out_hs_jax, out_deepstack_jax = _jitted_blocks(
+                jax_view(hidden_states),
+                cu_seqlens_jax,
+                rotary_pos_emb_cos_jax,
+                rotary_pos_emb_sin_jax,
+                max_seqlen_jax,
+                sequence_lengths_jax
+            )
+
+            hs_out = torch_view(out_hs_jax)
+            deepstack_features = [torch_view(f) for f in out_deepstack_jax]
+
+            hidden_states_final = torch.cat([hs_out] + deepstack_features, dim=1)
+            return hidden_states_final
+
+        import types
+        vision_tower.forward = types.MethodType(patched_forward, vision_tower)
+        logger.info("Successfully patched Qwen3_VisionTransformer for Granular JIT execution.")
+
     def _apply_pp_patch(self):
         # patch `get_pp_group` in vLLM to jax's get_pp_group.
         import sys
@@ -406,6 +529,7 @@ class VllmModelWrapper:
             
         # Patch Qwen3-VL specific stateful operations
         self._patch_qwen3_vl_stateless_deepstack(vllm_model)
+        self._patch_qwen3_vision_transformer(vllm_model)
 
         lora_manager = None
         if vllm_config_for_load.lora_config is not None:
