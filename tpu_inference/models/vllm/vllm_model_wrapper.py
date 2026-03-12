@@ -225,11 +225,20 @@ class VllmModelWrapper:
         
         import vllm.model_executor.layers.attention.mm_encoder_attention as mm_ea
 
-        # vLLM's CustomOp dispatch defaults to `forward_native` for TPU, which
-        # hardcodes a fallback to `_forward_sdpa`. By aliasing `forward_tpu`
-        # to `forward_cuda`, we allow the vision encoder to dispatch to `_forward_fa`
-        # (Flash Attention) during TPU execution since get_vit_attn_backend returns FLASH_ATTN.
-        mm_ea.MMEncoderAttention.forward_tpu = mm_ea.MMEncoderAttention.forward_cuda
+        # Instead of aliasing to forward_cuda which has hardcoded Enum checks that fail 
+        # on TPU where get_vit_attn_backend returns a string, we directly call _forward_fa.
+        def tpu_mm_encoder_forward(
+            self,
+            query: torch.Tensor,
+            key: torch.Tensor,
+            value: torch.Tensor,
+            cu_seqlens: torch.Tensor | None = None,
+            max_seqlen: torch.Tensor | None = None,
+            sequence_lengths: torch.Tensor | None = None,
+        ) -> torch.Tensor:
+            return self._forward_fa(query, key, value, cu_seqlens, max_seqlen)
+
+        mm_ea.MMEncoderAttention.forward_tpu = tpu_mm_encoder_forward
         logger.info("Successfully patched vLLM's MMEncoderAttention.forward_tpu for Flash Attention compatibility.")
 
     def _patch_qwen3_vl_stateless_deepstack(self, vllm_model):
@@ -350,6 +359,12 @@ class VllmModelWrapper:
         from torchax.interop import torch_view, jax_view
 
         vision_tower = vllm_model.visual
+        
+        # PRE-COMPUTE/CAPTURE THE RAW CPU CACHE HERE
+        # We MUST capture this outside of patched_forward! When patched_forward is called, 
+        # it is running under torch.func.functional_call, which dynamically replaces ALL 
+        # module buffers (including vllm_model.visual...) with torchax.tensor tracers.
+        untraced_cos_sin_cache = vllm_model.visual.rotary_pos_emb.cos_sin_cache.cpu()
 
         def patched_forward(self_vt, x: torch.Tensor, grid_thw: torch.Tensor | list[list[int]]) -> torch.Tensor:
             # PART 1: Eager Setup
@@ -366,8 +381,20 @@ class VllmModelWrapper:
             pos_embeds = self_vt.fast_pos_embed_interpolate(grid_thw_list)
             hidden_states = hidden_states + pos_embeds
             
-            # fast_pos_embed_interpolate and rot_pos_emb use PyTorch, producing CPU tensors.
-            rotary_pos_emb_cos_cpu, rotary_pos_emb_sin_cpu = self_vt.rot_pos_emb(grid_thw_list)
+            # FIX for JAX Tracer slicing: Use the original vllm_model parameter from the closure!
+            # Using self_vt.rotary_pos_emb directly here invokes torchax dynamic view tracing and fails.
+            max_grid_size = max(max(h, w) for _, h, w in grid_thw_list)
+            pos_ids = [
+                self_vt.rot_pos_ids(h, w, self_vt.spatial_merge_size)
+                if t == 1
+                else self_vt.rot_pos_ids(h, w, self_vt.spatial_merge_size).repeat(t, 1)
+                for t, h, w in grid_thw_list
+            ]
+            pos_ids = torch.cat(pos_ids, dim=0).to("cpu", non_blocking=True)
+            
+            cos, sin = untraced_cos_sin_cache[:max_grid_size].chunk(2, dim=-1)
+            rotary_pos_emb_cos_cpu = cos[pos_ids].flatten(1)
+            rotary_pos_emb_sin_cpu = sin[pos_ids].flatten(1)
 
             cu_seqlens_np = np.repeat(grid_thw_np[:, 1] * grid_thw_np[:, 2], grid_thw_np[:, 0]).cumsum(
                 axis=0, dtype=np.int32
@@ -394,8 +421,8 @@ class VllmModelWrapper:
 
             max_seqlen_jax = jax.numpy.array(max_seqlen_int, dtype=jax.numpy.int32)
             
-            rotary_pos_emb_cos_jax = jax.device_put(jax.numpy.array(rotary_pos_emb_cos_cpu.resolve_conj().numpy()))
-            rotary_pos_emb_sin_jax = jax.device_put(jax.numpy.array(rotary_pos_emb_sin_cpu.resolve_conj().numpy()))
+            rotary_pos_emb_cos_jax = jax.device_put(jax.numpy.array(rotary_pos_emb_cos_cpu.resolve_conj().to(torch.float32).numpy())).astype(jax.numpy.bfloat16)
+            rotary_pos_emb_sin_jax = jax.device_put(jax.numpy.array(rotary_pos_emb_sin_cpu.resolve_conj().to(torch.float32).numpy())).astype(jax.numpy.bfloat16)
 
             hidden_states = hidden_states.unsqueeze(1)
 
@@ -634,6 +661,8 @@ class VllmModelWrapper:
         return step_fun
 
     def jit_embed_multimodal_fn(self):
+        import numpy as np
+
         def embed_multimodal_fn(
             params_and_buffers,
             kwargs_keys: tuple[str, ...],
@@ -656,24 +685,47 @@ class VllmModelWrapper:
             if grid_thw is not None:
                 torch_kwargs["grid_thw"] = torch.tensor(grid_thw)
 
-            # Convert JAX arrays in kwargs to Torch tensors (via torch_view/conversion)
+            # Convert JAX arrays and NumPy arrays in kwargs to Torch tensors (via torch_view/conversion)
+            def _convert_to_torchax(val):
+                if isinstance(val, jax.Array):
+                    return torch_view(val)
+                elif isinstance(val, np.ndarray):
+                    return torch_view(jnp.asarray(val))
+                elif isinstance(val, list):
+                    return [_convert_to_torchax(x) for x in val]
+                elif isinstance(val, tuple):
+                    return tuple(_convert_to_torchax(x) for x in val)
+                elif isinstance(val, dict):
+                    return {k: _convert_to_torchax(v) for k, v in val.items()}
+                return val
+
             for k, v in kwargs.items():
-                if isinstance(v, jax.Array):
-                    torch_kwargs[k] = torch_view(v)
+                if k in ("image_grid_thw", "video_grid_thw", "grid_thw"):
+                    if isinstance(v, np.ndarray):
+                        torch_kwargs[k] = torch.from_numpy(v).clone()
+                    else:
+                        torch_kwargs[k] = torch.tensor(v)
+                    print(f"DEBUG_CONVERT: {k} preserved as CPU tensor {type(torch_kwargs[k])}")
                 else:
-                    torch_kwargs[k] = v
+                    torch_kwargs[k] = _convert_to_torchax(v)
+                    print(f"DEBUG_CONVERT: {k} before={type(v)} after={type(torch_kwargs[k])}")
 
             torch_kwargs["runner_method"] = "embed_multimodal"
 
             with torchax.default_env():
                  # We call embed_multimodal on _VllmRunner
-                 output_from_torch = torch.func.functional_call(
-                    self.model,
-                    torch_view(params_and_buffers),
-                    args=(),
-                    kwargs=torch_kwargs,
-                    tie_weights=False,
-                )
+                 try:
+                     output_from_torch = torch.func.functional_call(
+                        self.model,
+                        torch_view(params_and_buffers),
+                        args=(),
+                        kwargs=torch_kwargs,
+                        tie_weights=False,
+                    )
+                 except Exception as e:
+                     import traceback
+                     print(f"DEBUG_EMBED: EXCEPTION in functional_call: {e}\n{traceback.format_exc()}", flush=True)
+                     raise
             
             # Wrap output back to JAX
             # output_from_torch could be a Tensor or list of Tensors

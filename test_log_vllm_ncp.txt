@@ -1,0 +1,582 @@
+INFO 03-11 13:35:40 [__init__.py:59] TPU info: node_name=muskansh-v6e-1 | tpu_type=v6e-1 | worker_id=0 | num_chips=1 | num_cores_per_chip=1
+WARNING:absl:Tensorflow library not found, tensorflow.io.gfile operations will use native shim calls. GCS paths (i.e. 'gs://...') cannot be accessed.
+INFO 03-11 13:35:42 [importing.py:44] Triton is installed but 0 active driver(s) found (expected 1). Disabling Triton to prevent runtime errors.
+INFO 03-11 13:35:42 [importing.py:68] Triton not installed or not compatible; certain GPU-related functions will not be available.
+INFO 03-11 13:35:43 [utils.py:238] non-default args: {'max_model_len': 4096, 'max_num_seqs': 2, 'limit_mm_per_prompt': {'image': 1, 'video': 0, 'audio': 0}, 'mm_processor_kwargs': {'size': {'longest_edge': 1003520, 'shortest_edge': 3136}, 'fps': 1}, 'enable_chunked_prefill': False, 'model': 'Qwen/Qwen2.5-VL-3B-Instruct'}
+INFO 03-11 13:35:43 [model.py:530] Resolved architecture: Qwen2_5_VLForConditionalGeneration
+INFO 03-11 13:35:43 [model.py:1553] Using max model len 4096
+WARNING 03-11 13:35:43 [arg_utils.py:2050] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.
+INFO 03-11 13:35:44 [vllm.py:747] Asynchronous scheduling is enabled.
+INFO 03-11 13:35:44 [tpu_platform.py:111] Automatically using fp8_e5m2 for FP8 KV cache on TPU v6e.
+INFO 03-11 13:35:44 [tpu_platform.py:111] Automatically using fp8_e5m2 for FP8 KV cache on TPU v6e.
+INFO 03-11 13:35:44 [tpu_platform.py:149] Initialized sharding configuration: ShardingConfigManager(total_devices=1, sharding_strategy=ShardingStrategy(tensor_parallelism=1, expert_parallelism=1, sequence_parallelism=1, data_parallelism=1, attention_data_parallelism=1, attention_data_expert_parallelism=1), device_indexes=None)
+WARNING 03-11 13:35:44 [interface.py:226] Failed to import from vllm._C: ModuleNotFoundError("No module named 'vllm._C'")
+INFO 03-11 13:35:44 [tpu_platform.py:111] Automatically using fp8_e5m2 for FP8 KV cache on TPU v6e.
+INFO 03-11 13:35:44 [tpu_platform.py:111] Automatically using fp8_e5m2 for FP8 KV cache on TPU v6e.
+WARNING 03-11 13:35:44 [__init__.py:80] The quantization method 'awq' already exists and will be overwritten by the quantization config <class 'tpu_inference.layers.vllm.quantization.awq.VllmAWQConfig'>.
+WARNING 03-11 13:35:44 [__init__.py:80] The quantization method 'compressed-tensors' already exists and will be overwritten by the quantization config <class 'tpu_inference.layers.vllm.quantization.compressed_tensors.compressed_tensors.VllmCompressedTensorsConfig'>.
+WARNING 03-11 13:35:44 [__init__.py:80] The quantization method 'fp8' already exists and will be overwritten by the quantization config <class 'tpu_inference.layers.vllm.quantization.fp8.VllmFp8Config'>.
+WARNING 03-11 13:35:44 [__init__.py:80] The quantization method 'mxfp4' already exists and will be overwritten by the quantization config <class 'tpu_inference.layers.vllm.quantization.mxfp4.VllmMxfp4Config'>.
+INFO 03-11 13:35:44 [__init__.py:108] Registered model loader `<class 'tpu_inference.models.vllm.vllm_model_loader.IncrementalModelLoader'>` with load format `tpu_streaming_loader`
+WARNING 03-11 13:35:44 [__init__.py:97] Load format `runai_streamer` is already registered, and will be overwritten by the new loader class `<class 'tpu_inference.models.vllm.vllm_model_loader.RunaiIncrementalModelLoader'>`.
+INFO 03-11 13:35:44 [__init__.py:108] Registered model loader `<class 'tpu_inference.models.vllm.vllm_model_loader.RunaiIncrementalModelLoader'>` with load format `runai_streamer`
+INFO 03-11 13:35:44 [tpu_platform.py:190] Using KV cache block size: 256
+INFO 03-11 13:35:44 [tpu_platform.py:201] Force using UniProcExecutor for JAX on single host without pipeline parallelism.
+WARNING 03-11 13:35:44 [tpu_platform.py:224] TPU does not support running Multimodal models without setting `--disable_chunked_mm_input`. Forcing --disable_chunked_mm_input.
+The image processor of type `Qwen2VLImageProcessor` is now loaded as a fast processor by default, even if the model checkpoint was saved with a slow processor. This is a breaking change and may produce slightly different outputs. To continue using the slow processor, instantiate this class with `use_fast=False`. Note that this behavior will be extended to all models in a future release.
+WARNING 03-11 13:35:48 [input_processor.py:80] The signature of Platform.validate_request has changed from `(cls, prompt, params, processed_inputs) -> None` to `(cls, processed_inputs, params) -> None`. The old signature will no longer be supported starting from v0.18.
+WARNING 03-11 13:35:48 [tpu_platform.py:239] Pin memory is not supported on TPU.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:48 [core.py:101] Initializing a V1 LLM engine (v0.17.0rc1.dev168+gdc6b57846) with config: model='Qwen/Qwen2.5-VL-3B-Instruct', speculative_config=None, tokenizer='Qwen/Qwen2.5-VL-3B-Instruct', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=4096, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=True, quantization=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=None, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_fallback=False, disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False), seed=0, served_model_name=Qwen/Qwen2.5-VL-3B-Instruct, enable_prefix_caching=True, enable_chunked_prefill=False, pooler_config=None, compilation_config={'level': None, 'mode': <CompilationMode.DYNAMO_TRACE_ONCE: 2>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'openxla', 'custom_ops': ['all'], 'splitting_ops': [], 'compile_mm_encoder': False, 'compile_sizes': None, 'compile_ranges_split_points': [8192], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': None, 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False}, 'max_cudagraph_capture_size': None, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': True, 'static_all_moe_layers': []}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [parallel_state.py:1393] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/tmpc76g5d15 backend=gloo
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [parallel_state.py:1715] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [tpu_runner.py:302] Init mesh | mesh=Mesh('data': 1, 'model': 1, axis_types=(Auto, Auto))
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [utils.py:94] Prepared token paddings: [16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [utils.py:60] Prepared request paddings: [8]
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [compilation_manager.py:52] Enabling JAX compile cache.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [tpu_worker.py:279] Init worker | rank=0 | is_first_rank=True | is_last_rank=True | topology_order_id=0 | is_driver_worker=True | hbm=[(0.0, 31.25)]GiB |self.devices=[TpuDevice(id=0, process_index=0, coords=(0,0,0), core_on_chip=0)] | total devices=[TpuDevice(id=0, process_index=0, coords=(0,0,0), core_on_chip=0)] | local_devices=[TpuDevice(id=0, process_index=0, coords=(0,0,0), core_on_chip=0)]
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [model_loader.py:393] Loading model with MODEL_IMPL_TYPE=vllm
+(EngineCore_DP0 pid=1085037) WARNING:root:Duplicate op registration for aten.__and__
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [vllm_model_wrapper.py:233] Successfully patched vLLM's MMEncoderAttention.forward_tpu for Flash Attention compatibility.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [mm_encoder_attention.py:215] Using tpu_inference.layers.vllm.backends.flash_attn.PallasAttentionBackend for MMEncoderAttention.
+(EngineCore_DP0 pid=1085037) WARNING 03-11 13:35:51 [vllm.py:792] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [tpu_platform.py:149] Initialized sharding configuration: ShardingConfigManager(total_devices=1, sharding_strategy=ShardingStrategy(tensor_parallelism=1, expert_parallelism=1, sequence_parallelism=1, data_parallelism=1, attention_data_parallelism=1, attention_data_expert_parallelism=1), device_indexes=None)
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [tpu_platform.py:201] Force using UniProcExecutor for JAX on single host without pipeline parallelism.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [tpu_platform.py:75] Cannot use None backend on TPU. Setting to FLASH_ATTN.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:51 [tpu_platform.py:78] Using FLASH_ATTN backend.
+(EngineCore_DP0 pid=1085037) Loading safetensors checkpoint shards:   0% Completed | 0/2 [00:00<?, ?it/s]
+(EngineCore_DP0 pid=1085037) Loading safetensors checkpoint shards:  50% Completed | 1/2 [00:00<00:00,  3.23it/s]
+(EngineCore_DP0 pid=1085037) Loading safetensors checkpoint shards: 100% Completed | 2/2 [00:00<00:00,  3.02it/s]
+(EngineCore_DP0 pid=1085037) Loading safetensors checkpoint shards: 100% Completed | 2/2 [00:00<00:00,  3.05it/s]
+(EngineCore_DP0 pid=1085037) 
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:35:52 [default_loader.py:293] Loading weights took 0.76 seconds
+(EngineCore_DP0 pid=1085037) WARNING 03-11 13:35:52 [unquantized.py:129] Bias might return incorrect value.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:04 [vllm_model_wrapper.py:555] Total time to load model weights from storage to TPU: 12.75 seconds.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:04 [tpu_runner.py:563] Init model | hbm=[(7.12, 31.25)]GiB
+(EngineCore_DP0 pid=1085037) WARNING 03-11 13:36:04 [kv_cache_manager.py:189] Compilation num_layers = 36
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:04 [tpu_worker.py:313] Memory statistics | total_hbm_limit_gb=31.25GiB | total_hbm_limit_cap_gb=28.12GiB | total_hbm_used_gb=7.12GiB | total_hbm_avail_gb=21.0GiB
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:04 [kv_cache_utils.py:1314] GPU KV cache size: 611,584 tokens
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:04 [kv_cache_utils.py:1319] Maximum concurrency for 4,096 tokens per request: 149.31x
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:04 [compilation_manager.py:510] Compiling sampling with different input shapes.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:04 [compilation_manager.py:75] Precompile worker0 sample --> {'num_reqs': 8, 'do_sampling': True}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:05 [compilation_manager.py:80] Compilation finished in 0.69 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:05 [compilation_manager.py:75] Precompile worker0 sample --> {'num_reqs': 8, 'do_sampling': True}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:05 [compilation_manager.py:80] Compilation finished in 0.66 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:05 [compilation_manager.py:75] Precompile worker0 sample --> {'num_reqs': 8, 'do_sampling': False}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:06 [compilation_manager.py:80] Compilation finished in 0.26 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:06 [compilation_manager.py:75] Precompile worker0 sample --> {'num_reqs': 8, 'do_sampling': False}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:06 [compilation_manager.py:80] Compilation finished in 0.26 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:06 [compilation_manager.py:583] Compiling gather_logprobs with different input shapes.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:06 [compilation_manager.py:75] Precompile worker0 gather_logprobs --> {'num_reqs': 8}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:07 [compilation_manager.py:80] Compilation finished in 0.69 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:09 [kv_cache_manager.py:321] Init kv-cache | num_layers=36 | shape=(num_blocks, (256, 2, 2, 128)) | num_blocks=[2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389, 2389] | sharding=NamedSharding(mesh=Mesh('data': 1, 'model': 1, axis_types=(Auto, Auto)), spec=PartitionSpec('data', None, 'model'), memory_kind=device) | dtype=bfloat16 | hbm=[(28.12, 31.25)]Gb
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:09 [compilation_manager.py:85] Precompile all the subgraphs with possible input shapes.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:09 [compilation_manager.py:75] Precompile worker0 backbone --> {'num_tokens': 16}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py:167: UserWarning: Explicitly requested dtype int64 requested in astype is not available, and will be truncated to dtype int32. To enable more dtypes, set the jax_enable_x64 configuration option or the JAX_ENABLE_X64 shell environment variable. See https://github.com/jax-ml/jax#current-gotchas for more.
+(EngineCore_DP0 pid=1085037)   res = jax_function(self._elem, *args, **kwargs)
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:09 [tuned_block_sizes.py:4389] RPA v3 kernel tuned block sizes for ('TPU v6e', 256, 'q_bfloat16_kv_bfloat16', 'q_head-16_kv_head-2_head-128', 'max_model_len-4096-sw-None'): bkv_p=16, bq=16
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:12 [compilation_manager.py:80] Compilation finished in 3.31 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:12 [compilation_manager.py:75] Precompile worker0 backbone --> {'num_tokens': 32}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py:167: UserWarning: Explicitly requested dtype int64 requested in astype is not available, and will be truncated to dtype int32. To enable more dtypes, set the jax_enable_x64 configuration option or the JAX_ENABLE_X64 shell environment variable. See https://github.com/jax-ml/jax#current-gotchas for more.
+(EngineCore_DP0 pid=1085037)   res = jax_function(self._elem, *args, **kwargs)
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:12 [tuned_block_sizes.py:4389] RPA v3 kernel tuned block sizes for ('TPU v6e', 256, 'q_bfloat16_kv_bfloat16', 'q_head-16_kv_head-2_head-128', 'max_model_len-4096-sw-None'): bkv_p=16, bq=32
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:15 [compilation_manager.py:80] Compilation finished in 2.56 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:15 [compilation_manager.py:75] Precompile worker0 backbone --> {'num_tokens': 64}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py:167: UserWarning: Explicitly requested dtype int64 requested in astype is not available, and will be truncated to dtype int32. To enable more dtypes, set the jax_enable_x64 configuration option or the JAX_ENABLE_X64 shell environment variable. See https://github.com/jax-ml/jax#current-gotchas for more.
+(EngineCore_DP0 pid=1085037)   res = jax_function(self._elem, *args, **kwargs)
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:18 [compilation_manager.py:80] Compilation finished in 3.01 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:18 [compilation_manager.py:75] Precompile worker0 backbone --> {'num_tokens': 128}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py:167: UserWarning: Explicitly requested dtype int64 requested in astype is not available, and will be truncated to dtype int32. To enable more dtypes, set the jax_enable_x64 configuration option or the JAX_ENABLE_X64 shell environment variable. See https://github.com/jax-ml/jax#current-gotchas for more.
+(EngineCore_DP0 pid=1085037)   res = jax_function(self._elem, *args, **kwargs)
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:20 [compilation_manager.py:80] Compilation finished in 2.48 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:20 [compilation_manager.py:75] Precompile worker0 backbone --> {'num_tokens': 256}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py:167: UserWarning: Explicitly requested dtype int64 requested in astype is not available, and will be truncated to dtype int32. To enable more dtypes, set the jax_enable_x64 configuration option or the JAX_ENABLE_X64 shell environment variable. See https://github.com/jax-ml/jax#current-gotchas for more.
+(EngineCore_DP0 pid=1085037)   res = jax_function(self._elem, *args, **kwargs)
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:23 [compilation_manager.py:80] Compilation finished in 2.51 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:23 [compilation_manager.py:75] Precompile worker0 backbone --> {'num_tokens': 512}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py:167: UserWarning: Explicitly requested dtype int64 requested in astype is not available, and will be truncated to dtype int32. To enable more dtypes, set the jax_enable_x64 configuration option or the JAX_ENABLE_X64 shell environment variable. See https://github.com/jax-ml/jax#current-gotchas for more.
+(EngineCore_DP0 pid=1085037)   res = jax_function(self._elem, *args, **kwargs)
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:26 [compilation_manager.py:80] Compilation finished in 3.01 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:26 [compilation_manager.py:75] Precompile worker0 backbone --> {'num_tokens': 1024}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py:167: UserWarning: Explicitly requested dtype int64 requested in astype is not available, and will be truncated to dtype int32. To enable more dtypes, set the jax_enable_x64 configuration option or the JAX_ENABLE_X64 shell environment variable. See https://github.com/jax-ml/jax#current-gotchas for more.
+(EngineCore_DP0 pid=1085037)   res = jax_function(self._elem, *args, **kwargs)
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:29 [compilation_manager.py:80] Compilation finished in 2.51 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:29 [compilation_manager.py:75] Precompile worker0 backbone --> {'num_tokens': 2048}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py:167: UserWarning: Explicitly requested dtype int64 requested in astype is not available, and will be truncated to dtype int32. To enable more dtypes, set the jax_enable_x64 configuration option or the JAX_ENABLE_X64 shell environment variable. See https://github.com/jax-ml/jax#current-gotchas for more.
+(EngineCore_DP0 pid=1085037)   res = jax_function(self._elem, *args, **kwargs)
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:31 [compilation_manager.py:80] Compilation finished in 2.59 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:31 [compilation_manager.py:75] Precompile worker0 backbone --> {'num_tokens': 4096}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py:167: UserWarning: Explicitly requested dtype int64 requested in astype is not available, and will be truncated to dtype int32. To enable more dtypes, set the jax_enable_x64 configuration option or the JAX_ENABLE_X64 shell environment variable. See https://github.com/jax-ml/jax#current-gotchas for more.
+(EngineCore_DP0 pid=1085037)   res = jax_function(self._elem, *args, **kwargs)
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:34 [compilation_manager.py:80] Compilation finished in 3.11 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:34 [compilation_manager.py:75] Precompile worker0 backbone --> {'num_tokens': 8192}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py:167: UserWarning: Explicitly requested dtype int64 requested in astype is not available, and will be truncated to dtype int32. To enable more dtypes, set the jax_enable_x64 configuration option or the JAX_ENABLE_X64 shell environment variable. See https://github.com/jax-ml/jax#current-gotchas for more.
+(EngineCore_DP0 pid=1085037)   res = jax_function(self._elem, *args, **kwargs)
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:37 [compilation_manager.py:80] Compilation finished in 2.60 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:37 [compilation_manager.py:75] Precompile input_embeddings_merger --> {'num_tokens': 16}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py:167: UserWarning: Explicitly requested dtype int64 requested in astype is not available, and will be truncated to dtype int32. To enable more dtypes, set the jax_enable_x64 configuration option or the JAX_ENABLE_X64 shell environment variable. See https://github.com/jax-ml/jax#current-gotchas for more.
+(EngineCore_DP0 pid=1085037)   res = jax_function(self._elem, *args, **kwargs)
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:37 [compilation_manager.py:80] Compilation finished in 0.09 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:37 [compilation_manager.py:75] Precompile input_embeddings_merger_text_only --> {'num_tokens': 16}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:37 [compilation_manager.py:80] Compilation finished in 0.09 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:37 [compilation_manager.py:75] Precompile input_embeddings_merger --> {'num_tokens': 32}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:37 [compilation_manager.py:80] Compilation finished in 0.12 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:37 [compilation_manager.py:75] Precompile input_embeddings_merger_text_only --> {'num_tokens': 32}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:37 [compilation_manager.py:80] Compilation finished in 0.12 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:37 [compilation_manager.py:75] Precompile input_embeddings_merger --> {'num_tokens': 64}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:38 [compilation_manager.py:80] Compilation finished in 0.18 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:38 [compilation_manager.py:75] Precompile input_embeddings_merger_text_only --> {'num_tokens': 64}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:38 [compilation_manager.py:80] Compilation finished in 0.18 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:38 [compilation_manager.py:75] Precompile input_embeddings_merger --> {'num_tokens': 128}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:38 [compilation_manager.py:80] Compilation finished in 0.30 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:38 [compilation_manager.py:75] Precompile input_embeddings_merger_text_only --> {'num_tokens': 128}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:38 [compilation_manager.py:80] Compilation finished in 0.30 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:39 [compilation_manager.py:75] Precompile input_embeddings_merger --> {'num_tokens': 256}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:39 [compilation_manager.py:80] Compilation finished in 0.56 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:39 [compilation_manager.py:75] Precompile input_embeddings_merger_text_only --> {'num_tokens': 256}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:40 [compilation_manager.py:80] Compilation finished in 0.56 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:40 [compilation_manager.py:75] Precompile input_embeddings_merger --> {'num_tokens': 512}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:40 [compilation_manager.py:80] Compilation finished in 0.63 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:40 [compilation_manager.py:75] Precompile input_embeddings_merger_text_only --> {'num_tokens': 512}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:41 [compilation_manager.py:80] Compilation finished in 0.63 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:41 [compilation_manager.py:75] Precompile input_embeddings_merger --> {'num_tokens': 1024}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:41 [compilation_manager.py:80] Compilation finished in 0.35 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:41 [compilation_manager.py:75] Precompile input_embeddings_merger_text_only --> {'num_tokens': 1024}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:42 [compilation_manager.py:80] Compilation finished in 0.35 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:42 [compilation_manager.py:75] Precompile input_embeddings_merger --> {'num_tokens': 2048}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:42 [compilation_manager.py:80] Compilation finished in 0.35 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:42 [compilation_manager.py:75] Precompile input_embeddings_merger_text_only --> {'num_tokens': 2048}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:42 [compilation_manager.py:80] Compilation finished in 0.35 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:42 [compilation_manager.py:75] Precompile input_embeddings_merger --> {'num_tokens': 4096}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:43 [compilation_manager.py:80] Compilation finished in 0.33 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:43 [compilation_manager.py:75] Precompile input_embeddings_merger_text_only --> {'num_tokens': 4096}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:43 [compilation_manager.py:80] Compilation finished in 0.34 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:43 [compilation_manager.py:75] Precompile input_embeddings_merger --> {'num_tokens': 8192}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:43 [compilation_manager.py:80] Compilation finished in 0.33 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:43 [compilation_manager.py:75] Precompile input_embeddings_merger_text_only --> {'num_tokens': 8192}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:44 [compilation_manager.py:80] Compilation finished in 0.34 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:44 [compilation_manager.py:75] Precompile worker0 backbone with embeds --> {'num_tokens': 16}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:46 [compilation_manager.py:80] Compilation finished in 2.48 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:46 [compilation_manager.py:75] Precompile worker0 backbone with embeds --> {'num_tokens': 32}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:50 [compilation_manager.py:80] Compilation finished in 3.22 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:50 [compilation_manager.py:75] Precompile worker0 backbone with embeds --> {'num_tokens': 64}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:52 [compilation_manager.py:80] Compilation finished in 2.52 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:52 [compilation_manager.py:75] Precompile worker0 backbone with embeds --> {'num_tokens': 128}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:55 [compilation_manager.py:80] Compilation finished in 2.46 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:55 [compilation_manager.py:75] Precompile worker0 backbone with embeds --> {'num_tokens': 256}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:57 [compilation_manager.py:80] Compilation finished in 2.50 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:36:57 [compilation_manager.py:75] Precompile worker0 backbone with embeds --> {'num_tokens': 512}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:00 [compilation_manager.py:80] Compilation finished in 3.23 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:00 [compilation_manager.py:75] Precompile worker0 backbone with embeds --> {'num_tokens': 1024}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:03 [compilation_manager.py:80] Compilation finished in 2.46 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:03 [compilation_manager.py:75] Precompile worker0 backbone with embeds --> {'num_tokens': 2048}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:05 [compilation_manager.py:80] Compilation finished in 2.55 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:05 [compilation_manager.py:75] Precompile worker0 backbone with embeds --> {'num_tokens': 4096}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:08 [compilation_manager.py:80] Compilation finished in 2.54 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:08 [compilation_manager.py:75] Precompile worker0 backbone with embeds --> {'num_tokens': 8192}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:80] Compilation finished in 2.61 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:75] Precompile _substitute_placeholder_token_fn --> {'num_tokens': 16, 'num_reqs': 8}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/mlir.py:1271: UserWarning: Some donated buffers were not usable: int32[16], int32[16].
+(EngineCore_DP0 pid=1085037) See an explanation at https://docs.jax.dev/en/latest/faq.html#buffer-donation.
+(EngineCore_DP0 pid=1085037)   warnings.warn("Some donated buffers were not usable:"
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:80] Compilation finished in 0.06 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:75] Precompile _substitute_placeholder_token_fn --> {'num_tokens': 32, 'num_reqs': 8}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/mlir.py:1271: UserWarning: Some donated buffers were not usable: int32[32], int32[32].
+(EngineCore_DP0 pid=1085037) See an explanation at https://docs.jax.dev/en/latest/faq.html#buffer-donation.
+(EngineCore_DP0 pid=1085037)   warnings.warn("Some donated buffers were not usable:"
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:80] Compilation finished in 0.06 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:75] Precompile _substitute_placeholder_token_fn --> {'num_tokens': 64, 'num_reqs': 8}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/mlir.py:1271: UserWarning: Some donated buffers were not usable: int32[64], int32[64].
+(EngineCore_DP0 pid=1085037) See an explanation at https://docs.jax.dev/en/latest/faq.html#buffer-donation.
+(EngineCore_DP0 pid=1085037)   warnings.warn("Some donated buffers were not usable:"
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:80] Compilation finished in 0.09 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:75] Precompile _substitute_placeholder_token_fn --> {'num_tokens': 128, 'num_reqs': 8}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/mlir.py:1271: UserWarning: Some donated buffers were not usable: int32[128], int32[128].
+(EngineCore_DP0 pid=1085037) See an explanation at https://docs.jax.dev/en/latest/faq.html#buffer-donation.
+(EngineCore_DP0 pid=1085037)   warnings.warn("Some donated buffers were not usable:"
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:80] Compilation finished in 0.10 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:75] Precompile _substitute_placeholder_token_fn --> {'num_tokens': 256, 'num_reqs': 8}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/mlir.py:1271: UserWarning: Some donated buffers were not usable: int32[256], int32[256].
+(EngineCore_DP0 pid=1085037) See an explanation at https://docs.jax.dev/en/latest/faq.html#buffer-donation.
+(EngineCore_DP0 pid=1085037)   warnings.warn("Some donated buffers were not usable:"
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:80] Compilation finished in 0.12 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:75] Precompile _substitute_placeholder_token_fn --> {'num_tokens': 512, 'num_reqs': 8}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/mlir.py:1271: UserWarning: Some donated buffers were not usable: int32[512], int32[512].
+(EngineCore_DP0 pid=1085037) See an explanation at https://docs.jax.dev/en/latest/faq.html#buffer-donation.
+(EngineCore_DP0 pid=1085037)   warnings.warn("Some donated buffers were not usable:"
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:80] Compilation finished in 0.12 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:75] Precompile _substitute_placeholder_token_fn --> {'num_tokens': 1024, 'num_reqs': 8}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/mlir.py:1271: UserWarning: Some donated buffers were not usable: int32[1024], int32[1024].
+(EngineCore_DP0 pid=1085037) See an explanation at https://docs.jax.dev/en/latest/faq.html#buffer-donation.
+(EngineCore_DP0 pid=1085037)   warnings.warn("Some donated buffers were not usable:"
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:80] Compilation finished in 0.12 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:75] Precompile _substitute_placeholder_token_fn --> {'num_tokens': 2048, 'num_reqs': 8}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/mlir.py:1271: UserWarning: Some donated buffers were not usable: int32[2048], int32[2048].
+(EngineCore_DP0 pid=1085037) See an explanation at https://docs.jax.dev/en/latest/faq.html#buffer-donation.
+(EngineCore_DP0 pid=1085037)   warnings.warn("Some donated buffers were not usable:"
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:80] Compilation finished in 0.12 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:11 [compilation_manager.py:75] Precompile _substitute_placeholder_token_fn --> {'num_tokens': 4096, 'num_reqs': 8}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/mlir.py:1271: UserWarning: Some donated buffers were not usable: int32[4096], int32[4096].
+(EngineCore_DP0 pid=1085037) See an explanation at https://docs.jax.dev/en/latest/faq.html#buffer-donation.
+(EngineCore_DP0 pid=1085037)   warnings.warn("Some donated buffers were not usable:"
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:80] Compilation finished in 0.12 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:75] Precompile _substitute_placeholder_token_fn --> {'num_tokens': 8192, 'num_reqs': 8}
+(EngineCore_DP0 pid=1085037) /home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/interpreters/mlir.py:1271: UserWarning: Some donated buffers were not usable: int32[8192], int32[8192].
+(EngineCore_DP0 pid=1085037) See an explanation at https://docs.jax.dev/en/latest/faq.html#buffer-donation.
+(EngineCore_DP0 pid=1085037)   warnings.warn("Some donated buffers were not usable:"
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:80] Compilation finished in 0.12 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:431] Compiling select_from_array with different input shapes.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:410] Compiling select_from_array for worker0 select all logits.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:75] Precompile select_from_array [worker0 select all logits] --> {'array_size': 16, 'index_size': 8}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:80] Compilation finished in 0.05 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:75] Precompile select_from_array [worker0 select all logits] --> {'array_size': 32, 'index_size': 8}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:80] Compilation finished in 0.05 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:75] Precompile select_from_array [worker0 select all logits] --> {'array_size': 64, 'index_size': 8}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:80] Compilation finished in 0.05 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:75] Precompile select_from_array [worker0 select all logits] --> {'array_size': 128, 'index_size': 8}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:80] Compilation finished in 0.06 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:75] Precompile select_from_array [worker0 select all logits] --> {'array_size': 256, 'index_size': 8}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:80] Compilation finished in 0.08 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:75] Precompile select_from_array [worker0 select all logits] --> {'array_size': 512, 'index_size': 8}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:80] Compilation finished in 0.12 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:75] Precompile select_from_array [worker0 select all logits] --> {'array_size': 1024, 'index_size': 8}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:80] Compilation finished in 0.21 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:12 [compilation_manager.py:75] Precompile select_from_array [worker0 select all logits] --> {'array_size': 2048, 'index_size': 8}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:13 [compilation_manager.py:80] Compilation finished in 0.38 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:13 [compilation_manager.py:75] Precompile select_from_array [worker0 select all logits] --> {'array_size': 4096, 'index_size': 8}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:13 [compilation_manager.py:80] Compilation finished in 0.04 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:13 [compilation_manager.py:75] Precompile select_from_array [worker0 select all logits] --> {'array_size': 8192, 'index_size': 8}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:13 [compilation_manager.py:80] Compilation finished in 0.03 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:13 [compilation_manager.py:479] Compiling compute_logits with different input shapes.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:13 [compilation_manager.py:75] Precompile worker0 compute_logits --> {'num_reqs': 8}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:13 [compilation_manager.py:80] Compilation finished in 0.29 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:13 [compilation_manager.py:903] Compiling structured_decoding with different input shapes.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:13 [compilation_manager.py:75] Precompile structured_decode --> {'num_reqs': 8}
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:13 [compilation_manager.py:80] Compilation finished in 0.02 [secs].
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:13 [core.py:282] init engine (profile, create kv cache, warmup model) took 69.19 seconds
+(EngineCore_DP0 pid=1085037) WARNING 03-11 13:37:14 [vllm.py:792] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:14 [tpu_platform.py:149] Initialized sharding configuration: ShardingConfigManager(total_devices=1, sharding_strategy=ShardingStrategy(tensor_parallelism=1, expert_parallelism=1, sequence_parallelism=1, data_parallelism=1, attention_data_parallelism=1, attention_data_expert_parallelism=1), device_indexes=None)
+(EngineCore_DP0 pid=1085037) INFO 03-11 13:37:14 [tpu_platform.py:201] Force using UniProcExecutor for JAX on single host without pipeline parallelism.
+INFO 03-11 13:37:14 [llm.py:388] Supported tasks: ['generate']
+Rendering prompts:   0%|          | 0/4 [00:00<?, ?it/s]Rendering prompts:  25%|██▌       | 1/4 [00:02<00:06,  2.25s/it](EngineCore_DP0 pid=1085037) DEBUG_TPU_RUNNER: execute_model start. num_scheduled_tokens={'0-9c33ff62': 2675}, total=2675, input_batch.num_reqs=0
+(EngineCore_DP0 pid=1085037) DEBUG_PBM: update_states called.
+(EngineCore_DP0 pid=1085037) DEBUG_PBM: scheduled_new_reqs=['0-9c33ff62']
+(EngineCore_DP0 pid=1085037) DEBUG_PBM: scheduled_cached_reqs=[]
+(EngineCore_DP0 pid=1085037) DEBUG_PBM: num_scheduled_tokens={'0-9c33ff62': 2675}
+(EngineCore_DP0 pid=1085037) DEBUG_PBM: scheduled_req_ids=dict_keys(['0-9c33ff62'])
+(EngineCore_DP0 pid=1085037) DEBUG_PBM_CRITICAL: num_scheduled_tokens: {'0-9c33ff62': 2675}
+(EngineCore_DP0 pid=1085037) DEBUG_PBM_CRITICAL: scheduled_new_reqs len: 1
+(EngineCore_DP0 pid=1085037) DEBUG_PBM_CRITICAL: scheduling new req 0-9c33ff62
+Rendering prompts: 100%|██████████| 4/4 [00:02<00:00,  1.77it/s]
+Processed prompts:   0%|          | 0/4 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s](EngineCore_DP0 pid=1085037) DEBUG_CONVERT: pixel_values before=<class 'numpy.ndarray'> after=<class 'torchax.tensor.Tensor'>
+(EngineCore_DP0 pid=1085037) DEBUG_EMBED: EXCEPTION in functional_call: Recursively calling jit: arg signature: static args (positional + keyword): [], static arg keyword names: [], dynamic arg signatures (positional + keyword): [], dynamic arg shardings: [PyTreeDef(*)]
+(EngineCore_DP0 pid=1085037) dynamic arg signatures (positional + keyword): BF16[8192,40]
+(EngineCore_DP0 pid=1085037) dynamic arg shardings: NamedSharding(mesh=Mesh('data': 1, 'model': 1, axis_types=(Auto, Auto)), spec=PartitionSpec(), memory_kind=device)
+(EngineCore_DP0 pid=1085037) dynamic arg layouts: {1,0}
+(EngineCore_DP0 pid=1085037) committed args: true
+(EngineCore_DP0 pid=1085037) device: nullptr
+(EngineCore_DP0 pid=1085037) configs: trace_state: <weakref at 0x7e8c42743880; to 'EvalTrace' at 0x7e8c427435c0>, axis_env_state: (), mesh_context_manager: (), abstract_mesh_context_manager: AbstractMesh('data': 1, 'model': 1, axis_types=(Auto, Auto), device_kind=TPU v6 lite, num_cores=1), device_context: Mesh('data': 1, 'model': 1, axis_types=(Auto, Auto)), compute_on_context_manager: None, xla_metadata_context_manager: None, pallas_tpu_interpret_mode_context_manager: None, jax_check_static_indices: False, jax_random_seed_offset: 0, jax_safer_randint: True, jax_threefry_partitionable: True, jax_threefry_gpu_kernel_lowering: False, jax_use_direct_linearize: True, jax_use_simplified_jaxpr_constants: False, jax_remove_size_one_mesh_axis_from_type: False, check_vma: False, jax_softmax_custom_jvp: False, jax_enable_pgle: False, jax_pgle_profiling_runs: 3, jax_explicit_x64_dtypes: 1, jax_numpy_dtype_promotion: standard, jax_error_checking_behavior_nan: ignore, jax_error_checking_behavior_divide: ignore, jax_error_checking_behavior_oob: ignore, jax_enable_x64: False, jax_default_device: None, jax_numpy_rank_promotion: allow, jax_default_matmul_precision: None, eager_constant_folding: False, jax_no_execution: False, jax_xla_profile_version: 0, jax_use_shardy_partitioner: True, jax_optimization_level: UNKNOWN, jax_memory_fitting_level: O2
+(EngineCore_DP0 pid=1085037) 
+(EngineCore_DP0 pid=1085037) Traceback (most recent call last):
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/tpu-inference/tpu_inference/models/vllm/vllm_model_wrapper.py", line 684, in embed_multimodal_fn
+(EngineCore_DP0 pid=1085037)     output_from_torch = torch.func.functional_call(
+(EngineCore_DP0 pid=1085037)                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torch/_functorch/functional_call.py", line 153, in functional_call
+(EngineCore_DP0 pid=1085037)     return nn.utils.stateless._functional_call(
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torch/nn/utils/stateless.py", line 282, in _functional_call
+(EngineCore_DP0 pid=1085037)     return module(*args, **kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+(EngineCore_DP0 pid=1085037)     return self._call_impl(*args, **kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+(EngineCore_DP0 pid=1085037)     return forward_call(*args, **kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/tpu-inference/tpu_inference/models/vllm/vllm_model_wrapper.py", line 79, in forward
+(EngineCore_DP0 pid=1085037)     return self.embed_multimodal(**kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/tpu-inference/tpu_inference/models/vllm/vllm_model_wrapper.py", line 113, in embed_multimodal
+(EngineCore_DP0 pid=1085037)     return self.vllm_model.embed_multimodal(**kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/model_executor/models/qwen2_5_vl.py", line 1437, in embed_multimodal
+(EngineCore_DP0 pid=1085037)     image_embeddings = self._process_image_input(multimodal_input)
+(EngineCore_DP0 pid=1085037)                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/model_executor/models/qwen2_5_vl.py", line 1219, in _process_image_input
+(EngineCore_DP0 pid=1085037)     image_embeds = self.visual(pixel_values, grid_thw=grid_thw_list)
+(EngineCore_DP0 pid=1085037)                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+(EngineCore_DP0 pid=1085037)     return self._call_impl(*args, **kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+(EngineCore_DP0 pid=1085037)     return forward_call(*args, **kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/model_executor/models/qwen2_5_vl.py", line 806, in forward
+(EngineCore_DP0 pid=1085037)     ) = self.get_rope_by_thw(t, h, w)
+(EngineCore_DP0 pid=1085037)         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/model_executor/models/qwen2_5_vl.py", line 739, in get_rope_by_thw
+(EngineCore_DP0 pid=1085037)     cos_thw, sin_thw = self.rotary_pos_emb_thw(t, h, w)
+(EngineCore_DP0 pid=1085037)                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/model_executor/models/qwen2_5_vl.py", line 681, in rotary_pos_emb_thw
+(EngineCore_DP0 pid=1085037)     cos, sin = self.rotary_pos_emb.get_cos_sin(max_size)
+(EngineCore_DP0 pid=1085037)                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/model_executor/layers/rotary_embedding/base.py", line 113, in get_cos_sin
+(EngineCore_DP0 pid=1085037)     cos_sin = self.cos_sin_cache[:seqlen]
+(EngineCore_DP0 pid=1085037)               ~~~~~~~~~~~~~~~~~~^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py", line 247, in __torch_function__
+(EngineCore_DP0 pid=1085037)     return self.env.dispatch(func, types, args, kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py", line 607, in dispatch
+(EngineCore_DP0 pid=1085037)     res = op.func(*args, **kwargs)
+(EngineCore_DP0 pid=1085037)           ^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/ops/jtorch.py", line 256, in getitem
+(EngineCore_DP0 pid=1085037)     return View(self, view_info=NarrowInfo(indexes), env=self._env)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/view.py", line 248, in __new__
+(EngineCore_DP0 pid=1085037)     shape = view_info.calculate_output_shape(parent.jax())
+(EngineCore_DP0 pid=1085037)             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/view.py", line 129, in calculate_output_shape
+(EngineCore_DP0 pid=1085037)     return source[self.slices].shape
+(EngineCore_DP0 pid=1085037)            ~~~~~~^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/array.py", line 372, in __getitem__
+(EngineCore_DP0 pid=1085037)     return indexing.rewriting_take(self, idx)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/numpy/indexing.py", line 1052, in rewriting_take
+(EngineCore_DP0 pid=1085037)     result = _attempt_rewriting_take_via_slice(arr, indexer, mode=mode, out_sharding=out_sharding)
+(EngineCore_DP0 pid=1085037)              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/numpy/indexing.py", line 987, in _attempt_rewriting_take_via_slice
+(EngineCore_DP0 pid=1085037)     arr = slicing.slice(
+(EngineCore_DP0 pid=1085037)           ^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/lax/slicing.py", line 113, in slice
+(EngineCore_DP0 pid=1085037)     return slice_p.bind(operand, start_indices=tuple(start_indices),
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/core.py", line 633, in bind
+(EngineCore_DP0 pid=1085037)     return self._true_bind(*args, **params)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/core.py", line 649, in _true_bind
+(EngineCore_DP0 pid=1085037)     return self.bind_with_trace(prev_trace, args, params)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/core.py", line 661, in bind_with_trace
+(EngineCore_DP0 pid=1085037)     return trace.process_primitive(self, args, params)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/core.py", line 1210, in process_primitive
+(EngineCore_DP0 pid=1085037)     return primitive.impl(*args, **params)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/lax/slicing.py", line 1492, in _slice_impl
+(EngineCore_DP0 pid=1085037)     return dispatch.apply_primitive(dynamic_slice_p, x, *start_indices,
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/dispatch.py", line 91, in apply_primitive
+(EngineCore_DP0 pid=1085037)     outs = fun(*args)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/array.py", line 1268, in _array_shard_arg
+(EngineCore_DP0 pid=1085037)     results.append(api.device_put(x, Format(layout, sharding)))
+(EngineCore_DP0 pid=1085037)                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/array.py", line 1268, in _array_shard_arg
+(EngineCore_DP0 pid=1085037)     results.append(api.device_put(x, Format(layout, sharding)))
+(EngineCore_DP0 pid=1085037)                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037) RecursionError: Recursively calling jit: arg signature: static args (positional + keyword): [], static arg keyword names: [], dynamic arg signatures (positional + keyword): [], dynamic arg shardings: [PyTreeDef(*)]
+(EngineCore_DP0 pid=1085037) dynamic arg signatures (positional + keyword): BF16[8192,40]
+(EngineCore_DP0 pid=1085037) dynamic arg shardings: NamedSharding(mesh=Mesh('data': 1, 'model': 1, axis_types=(Auto, Auto)), spec=PartitionSpec(), memory_kind=device)
+(EngineCore_DP0 pid=1085037) dynamic arg layouts: {1,0}
+(EngineCore_DP0 pid=1085037) committed args: true
+(EngineCore_DP0 pid=1085037) device: nullptr
+(EngineCore_DP0 pid=1085037) configs: trace_state: <weakref at 0x7e8c42743880; to 'EvalTrace' at 0x7e8c427435c0>, axis_env_state: (), mesh_context_manager: (), abstract_mesh_context_manager: AbstractMesh('data': 1, 'model': 1, axis_types=(Auto, Auto), device_kind=TPU v6 lite, num_cores=1), device_context: Mesh('data': 1, 'model': 1, axis_types=(Auto, Auto)), compute_on_context_manager: None, xla_metadata_context_manager: None, pallas_tpu_interpret_mode_context_manager: None, jax_check_static_indices: False, jax_random_seed_offset: 0, jax_safer_randint: True, jax_threefry_partitionable: True, jax_threefry_gpu_kernel_lowering: False, jax_use_direct_linearize: True, jax_use_simplified_jaxpr_constants: False, jax_remove_size_one_mesh_axis_from_type: False, check_vma: False, jax_softmax_custom_jvp: False, jax_enable_pgle: False, jax_pgle_profiling_runs: 3, jax_explicit_x64_dtypes: 1, jax_numpy_dtype_promotion: standard, jax_error_checking_behavior_nan: ignore, jax_error_checking_behavior_divide: ignore, jax_error_checking_behavior_oob: ignore, jax_enable_x64: False, jax_default_device: None, jax_numpy_rank_promotion: allow, jax_default_matmul_precision: None, eager_constant_folding: False, jax_no_execution: False, jax_xla_profile_version: 0, jax_use_shardy_partitioner: True, jax_optimization_level: UNKNOWN, jax_memory_fitting_level: O2
+(EngineCore_DP0 pid=1085037) 
+(EngineCore_DP0 pid=1085037) --------------------
+(EngineCore_DP0 pid=1085037) For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
+(EngineCore_DP0 pid=1085037) 
+(EngineCore_DP0 pid=1085037) DEBUG_TPU_RUNNER: EXCEPTION in _execute_model: Recursively calling jit: arg signature: static args (positional + keyword): [], static arg keyword names: [], dynamic arg signatures (positional + keyword): [], dynamic arg shardings: [PyTreeDef(*)]
+(EngineCore_DP0 pid=1085037) dynamic arg signatures (positional + keyword): BF16[8192,40]
+(EngineCore_DP0 pid=1085037) dynamic arg shardings: NamedSharding(mesh=Mesh('data': 1, 'model': 1, axis_types=(Auto, Auto)), spec=PartitionSpec(), memory_kind=device)
+(EngineCore_DP0 pid=1085037) dynamic arg layouts: {1,0}
+(EngineCore_DP0 pid=1085037) committed args: true
+(EngineCore_DP0 pid=1085037) device: nullptr
+(EngineCore_DP0 pid=1085037) configs: trace_state: <weakref at 0x7e8c42743880; to 'EvalTrace' at 0x7e8c427435c0>, axis_env_state: (), mesh_context_manager: (), abstract_mesh_context_manager: AbstractMesh('data': 1, 'model': 1, axis_types=(Auto, Auto), device_kind=TPU v6 lite, num_cores=1), device_context: Mesh('data': 1, 'model': 1, axis_types=(Auto, Auto)), compute_on_context_manager: None, xla_metadata_context_manager: None, pallas_tpu_interpret_mode_context_manager: None, jax_check_static_indices: False, jax_random_seed_offset: 0, jax_safer_randint: True, jax_threefry_partitionable: True, jax_threefry_gpu_kernel_lowering: False, jax_use_direct_linearize: True, jax_use_simplified_jaxpr_constants: False, jax_remove_size_one_mesh_axis_from_type: False, check_vma: False, jax_softmax_custom_jvp: False, jax_enable_pgle: False, jax_pgle_profiling_runs: 3, jax_explicit_x64_dtypes: 1, jax_numpy_dtype_promotion: standard, jax_error_checking_behavior_nan: ignore, jax_error_checking_behavior_divide: ignore, jax_error_checking_behavior_oob: ignore, jax_enable_x64: False, jax_default_device: None, jax_numpy_rank_promotion: allow, jax_default_matmul_precision: None, eager_constant_folding: False, jax_no_execution: False, jax_xla_profile_version: 0, jax_use_shardy_partitioner: True, jax_optimization_level: UNKNOWN, jax_memory_fitting_level: O2
+(EngineCore_DP0 pid=1085037) 
+(EngineCore_DP0 pid=1085037) Traceback (most recent call last):
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/tpu-inference/tpu_inference/runner/tpu_runner.py", line 611, in execute_model
+(EngineCore_DP0 pid=1085037)     output = self._execute_model(scheduler_output,
+(EngineCore_DP0 pid=1085037)              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/tpu-inference/tpu_inference/runner/tpu_runner.py", line 796, in _execute_model
+(EngineCore_DP0 pid=1085037)     self.mm_manager.execute_mm_encoder(scheduler_output)
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/tpu-inference/tpu_inference/runner/multimodal_manager.py", line 168, in execute_mm_encoder
+(EngineCore_DP0 pid=1085037)     curr_group_outputs = self.runner.embed_multimodal_fn(
+(EngineCore_DP0 pid=1085037)                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/tpu-inference/tpu_inference/models/vllm/vllm_model_wrapper.py", line 684, in embed_multimodal_fn
+(EngineCore_DP0 pid=1085037)     output_from_torch = torch.func.functional_call(
+(EngineCore_DP0 pid=1085037)                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torch/_functorch/functional_call.py", line 153, in functional_call
+(EngineCore_DP0 pid=1085037)     return nn.utils.stateless._functional_call(
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torch/nn/utils/stateless.py", line 282, in _functional_call
+(EngineCore_DP0 pid=1085037)     return module(*args, **kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+(EngineCore_DP0 pid=1085037)     return self._call_impl(*args, **kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+(EngineCore_DP0 pid=1085037)     return forward_call(*args, **kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/tpu-inference/tpu_inference/models/vllm/vllm_model_wrapper.py", line 79, in forward
+(EngineCore_DP0 pid=1085037)     return self.embed_multimodal(**kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/tpu-inference/tpu_inference/models/vllm/vllm_model_wrapper.py", line 113, in embed_multimodal
+(EngineCore_DP0 pid=1085037)     return self.vllm_model.embed_multimodal(**kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/model_executor/models/qwen2_5_vl.py", line 1437, in embed_multimodal
+(EngineCore_DP0 pid=1085037)     image_embeddings = self._process_image_input(multimodal_input)
+(EngineCore_DP0 pid=1085037)                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/model_executor/models/qwen2_5_vl.py", line 1219, in _process_image_input
+(EngineCore_DP0 pid=1085037)     image_embeds = self.visual(pixel_values, grid_thw=grid_thw_list)
+(EngineCore_DP0 pid=1085037)                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+(EngineCore_DP0 pid=1085037)     return self._call_impl(*args, **kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+(EngineCore_DP0 pid=1085037)     return forward_call(*args, **kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/model_executor/models/qwen2_5_vl.py", line 806, in forward
+(EngineCore_DP0 pid=1085037)     ) = self.get_rope_by_thw(t, h, w)
+(EngineCore_DP0 pid=1085037)         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/model_executor/models/qwen2_5_vl.py", line 739, in get_rope_by_thw
+(EngineCore_DP0 pid=1085037)     cos_thw, sin_thw = self.rotary_pos_emb_thw(t, h, w)
+(EngineCore_DP0 pid=1085037)                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/model_executor/models/qwen2_5_vl.py", line 681, in rotary_pos_emb_thw
+(EngineCore_DP0 pid=1085037)     cos, sin = self.rotary_pos_emb.get_cos_sin(max_size)
+(EngineCore_DP0 pid=1085037)                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/model_executor/layers/rotary_embedding/base.py", line 113, in get_cos_sin
+(EngineCore_DP0 pid=1085037)     cos_sin = self.cos_sin_cache[:seqlen]
+(EngineCore_DP0 pid=1085037)               ~~~~~~~~~~~~~~~~~~^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py", line 247, in __torch_function__
+(EngineCore_DP0 pid=1085037)     return self.env.dispatch(func, types, args, kwargs)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/tensor.py", line 607, in dispatch
+(EngineCore_DP0 pid=1085037)     res = op.func(*args, **kwargs)
+(EngineCore_DP0 pid=1085037)           ^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/ops/jtorch.py", line 256, in getitem
+(EngineCore_DP0 pid=1085037)     return View(self, view_info=NarrowInfo(indexes), env=self._env)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/view.py", line 248, in __new__
+(EngineCore_DP0 pid=1085037)     shape = view_info.calculate_output_shape(parent.jax())
+(EngineCore_DP0 pid=1085037)             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/torchax/view.py", line 129, in calculate_output_shape
+(EngineCore_DP0 pid=1085037)     return source[self.slices].shape
+(EngineCore_DP0 pid=1085037)            ~~~~~~^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/array.py", line 372, in __getitem__
+(EngineCore_DP0 pid=1085037)     return indexing.rewriting_take(self, idx)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/numpy/indexing.py", line 1052, in rewriting_take
+(EngineCore_DP0 pid=1085037)     result = _attempt_rewriting_take_via_slice(arr, indexer, mode=mode, out_sharding=out_sharding)
+(EngineCore_DP0 pid=1085037)              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/numpy/indexing.py", line 987, in _attempt_rewriting_take_via_slice
+(EngineCore_DP0 pid=1085037)     arr = slicing.slice(
+(EngineCore_DP0 pid=1085037)           ^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/lax/slicing.py", line 113, in slice
+(EngineCore_DP0 pid=1085037)     return slice_p.bind(operand, start_indices=tuple(start_indices),
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/core.py", line 633, in bind
+(EngineCore_DP0 pid=1085037)     return self._true_bind(*args, **params)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/core.py", line 649, in _true_bind
+(EngineCore_DP0 pid=1085037)     return self.bind_with_trace(prev_trace, args, params)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/core.py", line 661, in bind_with_trace
+(EngineCore_DP0 pid=1085037)     return trace.process_primitive(self, args, params)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/core.py", line 1210, in process_primitive
+(EngineCore_DP0 pid=1085037)     return primitive.impl(*args, **params)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/lax/slicing.py", line 1492, in _slice_impl
+(EngineCore_DP0 pid=1085037)     return dispatch.apply_primitive(dynamic_slice_p, x, *start_indices,
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/dispatch.py", line 91, in apply_primitive
+(EngineCore_DP0 pid=1085037)     outs = fun(*args)
+(EngineCore_DP0 pid=1085037)            ^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/array.py", line 1268, in _array_shard_arg
+(EngineCore_DP0 pid=1085037)     results.append(api.device_put(x, Format(layout, sharding)))
+(EngineCore_DP0 pid=1085037)                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm_env/lib/python3.12/site-packages/jax/_src/array.py", line 1268, in _array_shard_arg
+(EngineCore_DP0 pid=1085037)     results.append(api.device_put(x, Format(layout, sharding)))
+(EngineCore_DP0 pid=1085037)                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037) RecursionError: Recursively calling jit: arg signature: static args (positional + keyword): [], static arg keyword names: [], dynamic arg signatures (positional + keyword): [], dynamic arg shardings: [PyTreeDef(*)]
+(EngineCore_DP0 pid=1085037) dynamic arg signatures (positional + keyword): BF16[8192,40]
+(EngineCore_DP0 pid=1085037) dynamic arg shardings: NamedSharding(mesh=Mesh('data': 1, 'model': 1, axis_types=(Auto, Auto)), spec=PartitionSpec(), memory_kind=device)
+(EngineCore_DP0 pid=1085037) dynamic arg layouts: {1,0}
+(EngineCore_DP0 pid=1085037) committed args: true
+(EngineCore_DP0 pid=1085037) device: nullptr
+(EngineCore_DP0 pid=1085037) configs: trace_state: <weakref at 0x7e8c42743880; to 'EvalTrace' at 0x7e8c427435c0>, axis_env_state: (), mesh_context_manager: (), abstract_mesh_context_manager: AbstractMesh('data': 1, 'model': 1, axis_types=(Auto, Auto), device_kind=TPU v6 lite, num_cores=1), device_context: Mesh('data': 1, 'model': 1, axis_types=(Auto, Auto)), compute_on_context_manager: None, xla_metadata_context_manager: None, pallas_tpu_interpret_mode_context_manager: None, jax_check_static_indices: False, jax_random_seed_offset: 0, jax_safer_randint: True, jax_threefry_partitionable: True, jax_threefry_gpu_kernel_lowering: False, jax_use_direct_linearize: True, jax_use_simplified_jaxpr_constants: False, jax_remove_size_one_mesh_axis_from_type: False, check_vma: False, jax_softmax_custom_jvp: False, jax_enable_pgle: False, jax_pgle_profiling_runs: 3, jax_explicit_x64_dtypes: 1, jax_numpy_dtype_promotion: standard, jax_error_checking_behavior_nan: ignore, jax_error_checking_behavior_divide: ignore, jax_error_checking_behavior_oob: ignore, jax_enable_x64: False, jax_default_device: None, jax_numpy_rank_promotion: allow, jax_default_matmul_precision: None, eager_constant_folding: False, jax_no_execution: False, jax_xla_profile_version: 0, jax_use_shardy_partitioner: True, jax_optimization_level: UNKNOWN, jax_memory_fitting_level: O2
+(EngineCore_DP0 pid=1085037) 
+(EngineCore_DP0 pid=1085037) --------------------
+(EngineCore_DP0 pid=1085037) For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
+(EngineCore_DP0 pid=1085037) 
+(EngineCore_DP0 pid=1085037) DEBUG_TPU_RUNNER: sample_tokens start. execute_model_state is None? True
+(EngineCore_DP0 pid=1085037) DEBUG_TPU_RUNNER: sample_tokens returning EMPTY_MODEL_RUNNER_OUTPUT
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:518] DEBUG_KEYERROR: step_w_batch: Missing keys in model_output.req_id_to_index: {'0-9c33ff62'}
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:519] DEBUG_KEYERROR: step_w_batch: model_output is None? False
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:521] DEBUG_KEYERROR: step_w_batch: model_output.req_ids: []
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118] EngineCore encountered a fatal error.
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118] Traceback (most recent call last):
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118]   File "/home/muskansh_google_com/dev/vllm/vllm/v1/engine/core.py", line 1109, in run_engine_core
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118]     engine_core.run_busy_loop()
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118]   File "/home/muskansh_google_com/dev/vllm/vllm/v1/engine/core.py", line 1144, in run_busy_loop
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118]     self._process_engine_step()
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118]   File "/home/muskansh_google_com/dev/vllm/vllm/v1/engine/core.py", line 1181, in _process_engine_step
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118]     outputs, model_executed = self.step_fn()
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118]                               ^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118]   File "/home/muskansh_google_com/dev/vllm/vllm/v1/engine/core.py", line 523, in step_with_batch_queue
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118]     engine_core_outputs = self.scheduler.update_from_output(
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118]   File "/home/muskansh_google_com/dev/vllm/vllm/v1/core/sched/scheduler.py", line 1320, in update_from_output
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118]     req_index = model_runner_output.req_id_to_index[req_id]
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118]                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+(EngineCore_DP0 pid=1085037) ERROR 03-11 13:37:19 [core.py:1118] KeyError: '0-9c33ff62'
+(EngineCore_DP0 pid=1085037) Process EngineCore_DP0:
+Traceback (most recent call last):
+  File "/home/muskansh_google_com/tpu-inference/examples/multi_modal_inference.py", line 281, in <module>
+    main(args)
+  File "/home/muskansh_google_com/tpu-inference/examples/multi_modal_inference.py", line 267, in main
+    outputs = llm.generate(
+              ^^^^^^^^^^^^^
+  File "/home/muskansh_google_com/dev/vllm/vllm/entrypoints/llm.py", line 489, in generate
+(EngineCore_DP0 pid=1085037) Traceback (most recent call last):
+    return self._run_completion(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/muskansh_google_com/dev/vllm/vllm/entrypoints/llm.py", line 1827, in _run_completion
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+(EngineCore_DP0 pid=1085037)     self.run()
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/multiprocessing/process.py", line 108, in run
+(EngineCore_DP0 pid=1085037)     self._target(*self._args, **self._kwargs)
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/v1/engine/core.py", line 1120, in run_engine_core
+(EngineCore_DP0 pid=1085037)     raise e
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/v1/engine/core.py", line 1109, in run_engine_core
+(EngineCore_DP0 pid=1085037)     engine_core.run_busy_loop()
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/v1/engine/core.py", line 1144, in run_busy_loop
+(EngineCore_DP0 pid=1085037)     self._process_engine_step()
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/v1/engine/core.py", line 1181, in _process_engine_step
+(EngineCore_DP0 pid=1085037)     outputs, model_executed = self.step_fn()
+(EngineCore_DP0 pid=1085037)                               ^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/v1/engine/core.py", line 523, in step_with_batch_queue
+(EngineCore_DP0 pid=1085037)     engine_core_outputs = self.scheduler.update_from_output(
+(EngineCore_DP0 pid=1085037)                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore_DP0 pid=1085037)   File "/home/muskansh_google_com/dev/vllm/vllm/v1/core/sched/scheduler.py", line 1320, in update_from_output
+(EngineCore_DP0 pid=1085037)     req_index = model_runner_output.req_id_to_index[req_id]
+(EngineCore_DP0 pid=1085037)                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+(EngineCore_DP0 pid=1085037) KeyError: '0-9c33ff62'
+    return self._run_engine(use_tqdm=use_tqdm, output_type=output_type)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/muskansh_google_com/dev/vllm/vllm/entrypoints/llm.py", line 1979, in _run_engine
+    step_outputs = self.llm_engine.step()
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/muskansh_google_com/dev/vllm/vllm/v1/engine/llm_engine.py", line 302, in step
+    outputs = self.engine_core.get_output()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/muskansh_google_com/dev/vllm/vllm/v1/engine/core_client.py", line 804, in get_output
+    raise self._format_exception(outputs) from None
+vllm.v1.engine.exceptions.EngineDeadError: EngineCore encountered an issue. See stack trace (above) for the root cause.
+Processed prompts:   0%|          | 0/4 [00:04<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]

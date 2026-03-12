@@ -48,6 +48,7 @@ def run_qwen_vl(questions: list[str], modality: str,
             "fps": 1,
         },
         limit_mm_per_prompt={modality: 1},
+        enable_chunked_prefill=False,
     )
 
     if modality == "image":
@@ -137,7 +138,7 @@ def parse_args():
         "--model",
         "-m",
         type=str,
-        default="Qwen/Qwen2.5-VL-3B-Instruct",
+        default="Qwen/Qwen3-VL-8B-Instruct",
         help="Huggingface model name.",
     )
     parser.add_argument(
