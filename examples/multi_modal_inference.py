@@ -190,11 +190,6 @@ def parse_args():
         default=None,
         help="Set the seed when initializing `vllm.LLM`.",
     )
-    parser.add_argument(
-        "--disable-mm-preprocessor-cache",
-        action="store_true",
-        help="If True, disables caching of multi-modal preprocessor/mapper.",
-    )
 
     parser.add_argument(
         "--time-generate",
@@ -228,11 +223,10 @@ def main(args):
     req_data.engine_args.limit_mm_per_prompt = default_limits | dict(
         req_data.engine_args.limit_mm_per_prompt or {})
 
-    engine_args = asdict(req_data.engine_args) | {
-        "seed": args.seed,
-        "disable_mm_preprocessor_cache": args.disable_mm_preprocessor_cache,
-    }
-    llm = LLM(**engine_args)
+    engine_args_dict = asdict(req_data.engine_args)
+    if args.seed is not None:
+        engine_args_dict["seed"] = args.seed
+    llm = LLM(**engine_args_dict)
 
     # Don't want to check the flag multiple times, so just hijack `prompts`.
     prompts = (req_data.prompts if args.use_different_prompt_per_request else
