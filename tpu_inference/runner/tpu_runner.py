@@ -26,6 +26,7 @@ import jaxtyping
 import numpy as np
 import vllm.envs as vllm_envs
 from flax import nnx
+from jax._src import mesh as mesh_lib
 from jax._src.pallas.utils import next_power_of_2
 from jax.experimental import mesh_utils
 from jax.sharding import NamedSharding, PartitionSpec
@@ -147,6 +148,7 @@ class ExecuteModelState:
 
     scheduler_output: "VllmSchedulerOutput"
     attn_metadata: AttentionMetadata
+    sampling_metadata: TPUSupportedSamplingMetadata
     input_ids: Optional[jax.Array]
     hidden_states: jax.Array
     logits: jax.Array
@@ -265,7 +267,8 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
         self.mm_manager = MultiModalManager(self)
         self.persistent_batch_manager = PersistentBatchManager(
             self.requests, self.input_batch, self.encoder_cache,
-            self.uses_mrope, self.model_config, self.is_last_rank)
+            self.deepstack_cache, self.uses_mrope, self.model_config,
+            self.is_last_rank)
         self.lora_utils = LoraUtils(self)
 
         cache_dtype = self.cache_config.cache_dtype
@@ -385,8 +388,10 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
             and len(self.vllm_config.sharding_config.device_indexes) > 0)
 
         if enforce_device_order:
+            axis_types = (mesh_lib.AxisType.Auto, ) * len(mesh_shape)
             return jax.make_mesh(mesh_shape,
                                  MESH_AXIS_NAMES_2D,
+                                 axis_types,
                                  devices=self.devices)
         else:
             return make_optimized_mesh(mesh_shape,
@@ -458,6 +463,8 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
         self.requests: dict[str, CachedRequestState] = {}
         # mm_hash ->  encoder_output
         self.encoder_cache: dict[str, jax.Array] = {}
+        # mm_hash -> DeepStack outputs (per layer)
+        self.deepstack_cache: dict[str, list[jax.Array]] = {}
         self.input_batch = InputBatch(
             max_num_reqs=self.max_num_reqs,
             max_model_len=self.max_model_len,
@@ -629,11 +636,12 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
             print(f"DEBUG_TPU_RUNNER: sample_tokens returning EMPTY_MODEL_RUNNER_OUTPUT", flush=True)
             return EMPTY_MODEL_RUNNER_OUTPUT
 
-        (scheduler_output, attn_metadata, input_ids, hidden_states, logits,
-         aux_hidden_states, spec_decode_metadata, kv_connector_output,
-         logits_indices_selector,
+        (scheduler_output, attn_metadata, sampling_metadata, input_ids,
+         hidden_states, logits, aux_hidden_states, spec_decode_metadata,
+         kv_connector_output, logits_indices_selector,
          padded_num_reqs) = (self.execute_model_state.scheduler_output,
                              self.execute_model_state.attn_metadata,
+                             self.execute_model_state.sampling_metadata,
                              self.execute_model_state.input_ids,
                              self.execute_model_state.hidden_states,
                              self.execute_model_state.logits,
@@ -656,9 +664,9 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
                 arange,
             )
         return self._sample_from_logits(
-            scheduler_output, attn_metadata, input_ids, hidden_states, logits,
-            aux_hidden_states, spec_decode_metadata, kv_connector_output,
-            logits_indices_selector, padded_num_reqs)
+            scheduler_output, attn_metadata, sampling_metadata, input_ids,
+            hidden_states, logits, aux_hidden_states, spec_decode_metadata,
+            kv_connector_output, logits_indices_selector, padded_num_reqs)
 
     def _modify_prev_results(self):
         # If copy to host has not been done, we just wait.
@@ -782,7 +790,7 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
             input_ids,
             input_positions,
             attn_metadata,
-            _,
+            sampling_metadata,
             logits_indices,
             spec_decode_metadata,
             logits_indices_selector,
@@ -794,10 +802,15 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
             # Run the multimodal encoder if any.
             # We have the modality embeds at this time.
             self.mm_manager.execute_mm_encoder(scheduler_output)
-            mm_embeds = self.mm_manager.gather_mm_embeddings(
+            mm_result = self.mm_manager.gather_mm_embeddings(
                 scheduler_output, input_ids.shape[0])
         else:
-            mm_embeds = []
+            mm_result = []
+
+        deepstack_embeds = None
+        mm_embeds = mm_result
+        if isinstance(mm_result, tuple):
+            mm_embeds, deepstack_embeds = mm_result
 
         # NOTE(Wenlong): For multi-modal model,
         # it will embed the text tokens and merge with the existing modality embeds
@@ -833,6 +846,7 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
                      intermediate_tensors,
                      self.is_first_rank,
                      self.is_last_rank,
+                     deepstack_embeds,
                  )
             if not self.is_last_rank:
                 assert isinstance(hidden_states, JaxIntermediateTensors)
@@ -870,6 +884,7 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
         self.execute_model_state = ExecuteModelState(
             scheduler_output=scheduler_output,
             attn_metadata=attn_metadata,
+            sampling_metadata=sampling_metadata,
             input_ids=input_ids,
             hidden_states=hidden_states,
             logits=logits,
@@ -884,6 +899,7 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
         self,
         scheduler_output: "VllmSchedulerOutput",
         attn_metadata: AttentionMetadata,
+        tpu_sampling_metadata: TPUSupportedSamplingMetadata,
         input_ids: Optional[jax.Array],
         hidden_states: jax.Array,
         logits: jax.Array,
@@ -897,15 +913,6 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
             padded_num_reqs = runner_utils.get_padded_num_reqs_with_upper_limit(
                 self.input_batch.num_reqs, self.max_num_reqs)
 
-        sharding = None
-        if self.dp_size > 1:
-            sharding = NamedSharding(self.mesh,
-                                     PartitionSpec(ShardingAxisName.MLP_DATA))
-
-        tpu_sampling_metadata = TPUSupportedSamplingMetadata.from_input_batch(
-            self.mesh, self.input_batch, padded_num_reqs, sharding=sharding)
-
-        # TODO(pooyam): Should we move this to `_prepare_inputs`?
         if tpu_sampling_metadata.do_sampling:
             self.rng_params_for_sampling, step_rng = jax.random.split(
                 self.rng_params_for_sampling)
@@ -1020,8 +1027,7 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
             # Return Model output to executor
             model_runner_output = ModelRunnerOutput(
                 req_ids=req_ids,
-                req_id_to_index=copy.deepcopy(
-                    self.input_batch.req_id_to_index),
+                req_id_to_index=copy.copy(self.input_batch.req_id_to_index),
                 sampled_token_ids=[],  # Fill in async get
                 logprobs=logprobs_lists,
                 prompt_logprobs_dict=prompt_logprobs_dict,
@@ -1463,8 +1469,7 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
             self.mesh,
             self.input_batch,
             padded_num_reqs,
-            sharding=NamedSharding(self.mesh,
-                                   PartitionSpec(ShardingAxisName.MLP_DATA)),
+            sharding=data_parallel_attn_sharding,
         )
         if self.uses_mrope:
             positions = mrope_positions
@@ -1764,7 +1769,7 @@ class TPUModelRunner(KVConnectorModelRunnerMixin, LoRAModelRunnerMixin):
                 input_ids,
                 mm_embeds,
             )
-            return None, inputs_embeds
+            return input_ids, inputs_embeds
         else:
             return input_ids, None
 

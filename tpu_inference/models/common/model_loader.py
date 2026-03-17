@@ -73,6 +73,10 @@ def _get_model_architecture(config: PretrainedConfig) -> nnx.Module:
         Qwen2_5_VLForConditionalGeneration
     from tpu_inference.models.jax.qwen3 import Qwen3ForCausalLM
     from tpu_inference.models.jax.qwen3_moe import Qwen3MoeForCausalLM
+    from tpu_inference.models.jax.qwen3_vl import \
+        Qwen3VLForConditionalGeneration
+    from tpu_inference.models.jax.qwen3_vl_moe import \
+        Qwen3VLMoeForConditionalGeneration
     _MODEL_REGISTRY["Llama4ForCausalLM"] = Llama4ForCausalLM
     _MODEL_REGISTRY["DeepseekV3ForCausalLM"] = DeepseekV3ForCausalLM
     _MODEL_REGISTRY["LlamaForCausalLM"] = LlamaForCausalLM
@@ -81,6 +85,10 @@ def _get_model_architecture(config: PretrainedConfig) -> nnx.Module:
     _MODEL_REGISTRY["Qwen3MoeForCausalLM"] = Qwen3MoeForCausalLM
     _MODEL_REGISTRY[
         "Qwen2_5_VLForConditionalGeneration"] = Qwen2_5_VLForConditionalGeneration
+    _MODEL_REGISTRY[
+        "Qwen3VLForConditionalGeneration"] = Qwen3VLForConditionalGeneration
+    _MODEL_REGISTRY[
+        "Qwen3VLMoeForConditionalGeneration"] = Qwen3VLMoeForConditionalGeneration
     _MODEL_REGISTRY["Eagle3LlamaForCausalLM"] = EagleLlama3ForCausalLM
     _MODEL_REGISTRY["GptOssForCausalLM"] = GptOss
     _MODEL_REGISTRY["Qwen2ForCausalLM"] = Qwen2ForCausalLM
@@ -138,7 +146,8 @@ def _get_nnx_model(
                                             apply_to_abstract_model=False)
         return model
 
-    if vllm_config.load_config.load_format == "dummy":
+    if vllm_config.load_config.load_format == "dummy" and not issubclass(
+            model_class, LoadableWithIterator):
         # Create a sharded model with random inited weights.
         # TODO: currently Qwen2ForCausalLM is using legacy model implementation
         # will merge the random init logic when all model are migrated to new model implementation
@@ -166,7 +175,7 @@ def _get_nnx_model(
 
         @jax.jit
         def create_sharded_model():
-            model = model_class(vllm_config, rng, mesh)
+            model = create_abstract_model()
             state = nnx.state(model)
             pspecs = nnx.get_partition_spec(state)
             sharded_state = jax.lax.with_sharding_constraint(state, pspecs)
@@ -213,6 +222,8 @@ def _get_nnx_model(
         # the model creation again, otherwise the model forward will have
         # non-trivial overhead in PjitFunction.
         with jax.set_mesh(mesh):
+            if vllm_config.load_config.load_format == "dummy":
+                vllm_config.load_config.load_format = "jax_dummy"
             loader = get_model_loader(vllm_config.load_config)
             if isinstance(model, LoadableWithIterator):
                 assert isinstance(model, JaxModule)

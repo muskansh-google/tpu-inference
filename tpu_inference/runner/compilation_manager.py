@@ -147,6 +147,32 @@ class CompilationManager:
                 num_tokens=num_tokens,
             )
 
+    def _create_dummy_deepstack_embeds(
+            self, num_tokens: int) -> Optional[list[jax.Array]]:
+        hf_config = self.runner.vllm_config.model_config.hf_config
+        vision_config = getattr(hf_config, "vision_config", None)
+        if vision_config is None:
+            return None
+
+        deepstack_visual_indexes = getattr(vision_config,
+                                           "deepstack_visual_indexes", ())
+        if not deepstack_visual_indexes:
+            return None
+
+        hidden_size = getattr(
+            vision_config,
+            "out_hidden_size",
+            self.runner.vllm_config.model_config.get_hidden_size(),
+        )
+        sharding = NamedSharding(self.runner.mesh, PartitionSpec())
+        return [
+            self._create_dummy_tensor(
+                (num_tokens, hidden_size),
+                self.runner.vllm_config.model_config.dtype,
+                sharding=sharding,
+            ) for _ in range(len(deepstack_visual_indexes))
+        ]
+
     def _precompile_backbone_helper(self,
                                     name,
                                     *,
@@ -225,11 +251,13 @@ class CompilationManager:
             intermediate_tensors,
             is_first_rank,
             is_last_rank,
+            deepstack_embeds,
         ):
             kv_caches, hidden_states, _ = self.runner.model_fn(
                 state, kv_caches, input_ids, attention_metadata, inputs_embeds,
                 positions, layer_name_to_kvcache_index, lora_metadata,
-                intermediate_tensors, is_first_rank, is_last_rank)
+                intermediate_tensors, is_first_rank, is_last_rank,
+                deepstack_embeds)
             self.runner.kv_caches = kv_caches
             return hidden_states
 
@@ -251,8 +279,33 @@ class CompilationManager:
                 intermediate_tensors,
                 is_first_rank,
                 is_last_rank,
+                None,
                 num_tokens=num_tokens,
             )
+
+            dummy_deepstack_embeds = None
+            if inputs_embeds is not None:
+                dummy_deepstack_embeds = self._create_dummy_deepstack_embeds(
+                    num_tokens)
+
+            if dummy_deepstack_embeds is not None:
+                self._run_compilation(
+                    f"{name} with deepstack",
+                    model_fn_wrapper,
+                    self.runner.state,
+                    self.runner.kv_caches,
+                    input_ids,
+                    attention_metadata,
+                    positions,
+                    inputs_embeds,
+                    tuple(self.runner.layer_name_to_kvcache_index.items()),
+                    lora_metadata,
+                    intermediate_tensors,
+                    is_first_rank,
+                    is_last_rank,
+                    dummy_deepstack_embeds,
+                    num_tokens=num_tokens,
+                )
 
     def _precompile_substitute_placeholder_token(self) -> None:
         """Precompiles the token substitution function for all expected input shapes.
@@ -346,6 +399,10 @@ class CompilationManager:
         for num_tokens in self.runner.num_tokens_paddings:
             inputs_embeds = self._create_dummy_tensor(
                 (num_tokens, hidden_size), dtype)
+            input_ids = None
+            if self.runner.is_multimodal_model:
+                input_ids = self._create_dummy_tensor((num_tokens, ),
+                                                      jnp.int32)
             if self.runner.uses_mrope:
                 positions = self._create_dummy_tensor((3, num_tokens),
                                                       jnp.int32)
@@ -368,7 +425,7 @@ class CompilationManager:
                 intermediate_tensors = None
             self._precompile_backbone_helper(
                 f"worker{self.runner.rank} backbone with embeds",
-                input_ids=None,
+                input_ids=input_ids,
                 positions=positions,
                 inputs_embeds=inputs_embeds,
                 intermediate_tensors=intermediate_tensors,
@@ -512,8 +569,7 @@ class CompilationManager:
         for num_reqs in self.runner.num_reqs_paddings:
             logits_sharding = NamedSharding(
                 self.runner.mesh,
-                PartitionSpec(ShardingAxisName.MLP_DATA,
-                              ShardingAxisName.MLP_TENSOR))
+                PartitionSpec(ShardingAxisName.ATTN_DATA, None))
             dp_size = self.runner.vllm_config.sharding_config.total_dp_size
             sampling_metadata_sharding = NamedSharding(
                 self.runner.mesh, PartitionSpec(
@@ -536,10 +592,20 @@ class CompilationManager:
                         top_k = None
                         top_p = None
 
+                    # Use a dummy tensor with a unique shape for each logprobs config.
+                    # This avoids persistent cache collisions.
+                    dummy_shape = (1 if logprobs else 2, )
+                    _cache_collision_dummy = jnp.zeros(dummy_shape,
+                                                       dtype=jnp.int32)
+                    _cache_collision_dummy = jax.device_put(
+                        _cache_collision_dummy,
+                        NamedSharding(self.runner.mesh, PartitionSpec(None)))
+
                     sampling_metadata = TPUSupportedSamplingMetadata(
                         temperature=temperature,
                         top_k=top_k,
                         top_p=top_p,
+                        _cache_collision_dummy=_cache_collision_dummy,
                         do_sampling=do_sampling,
                         logprobs=logprobs)
                     self._run_compilation(
@@ -631,6 +697,16 @@ class CompilationManager:
 
                 for do_sampling in (False, True):
                     draft_probs = None
+                    # Use a dummy tensor with a unique shape for each logprobs config.
+                    # Currently logprobs=False for rejection_sampler.
+                    logprobs_dummy = False
+                    dummy_shape = (1 if logprobs_dummy else 2, )
+                    _cache_collision_dummy = jnp.zeros(dummy_shape,
+                                                       dtype=jnp.int32)
+                    _cache_collision_dummy = jax.device_put(
+                        _cache_collision_dummy,
+                        NamedSharding(self.runner.mesh, PartitionSpec(None)))
+
                     if do_sampling:
                         compilation_name = "random_rejection_sampler"
                         temperature = self._create_dummy_tensor((num_reqs, ),
@@ -643,10 +719,12 @@ class CompilationManager:
                             temperature=temperature,
                             top_k=top_k,
                             top_p=top_p,
+                            _cache_collision_dummy=_cache_collision_dummy,
                             do_sampling=do_sampling)
                     else:
                         compilation_name = "greedy_rejection_sampler"
                         sampling_metadata = TPUSupportedSamplingMetadata(
+                            _cache_collision_dummy=_cache_collision_dummy,
                             do_sampling=do_sampling)
 
                     self._run_compilation(
