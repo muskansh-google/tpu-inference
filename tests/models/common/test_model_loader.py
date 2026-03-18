@@ -346,6 +346,38 @@ def test_get_vllm_model_random_weights(mock_get_pp_group, mesh):
     mock_load.assert_called()
 
 
+def test_get_vllm_model_multimodal_functions(mock_get_pp_group, mesh):
+    """Tests that get_vllm_model correctly populates multimodal_fns."""
+    rng = jax.random.PRNGKey(42)
+
+    engine_args = EngineArgs(model="Qwen/Qwen3-0.6B")
+    vllm_config = engine_args.create_engine_config()
+
+    mock_wrapper_instance = MagicMock()
+    mock_wrapper_instance.load_weights.return_value = (MagicMock(), MagicMock())
+
+    mock_embed_multi = MagicMock()
+    mock_embed_input = MagicMock()
+    mock_wrapper_instance.embed_multimodal_func.return_value = mock_embed_multi
+    mock_wrapper_instance.embed_input_ids_func.return_value = mock_embed_input
+
+    mock_wrapper_instance.jit_step_func.return_value = MagicMock()
+    mock_wrapper_instance.jit_compute_logits_func.return_value = MagicMock()
+    mock_wrapper_instance.build_pooler_func.return_value = MagicMock()
+
+    with patch(
+        "tpu_inference.models.vllm.vllm_model_wrapper.VllmModelWrapper",
+        return_value=mock_wrapper_instance,
+    ):
+        with set_current_vllm_config(vllm_config):
+            _, _, _, _, multimodal_fns, *_ = model_loader.get_vllm_model(
+                vllm_config, rng, mesh
+            )
+
+    assert multimodal_fns["embed_multimodal_fn"] == mock_embed_multi
+    assert multimodal_fns["embed_input_ids_fn"] == mock_embed_input
+
+
 # ==============================================================================
 # >> Test Suite for get_model Fallback Logic
 # ==============================================================================
