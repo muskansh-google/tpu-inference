@@ -21,6 +21,9 @@ from vllm.model_executor.layers.rotary_embedding import MRotaryEmbedding
 from vllm.multimodal.inputs import MultiModalKwargsItem, PlaceholderRange
 from vllm.multimodal.utils import group_and_batch_mm_kwargs
 from vllm.v1.core.sched.output import SchedulerOutput as VllmSchedulerOutput
+import torch
+import torchax
+from torchax.interop import jax_view, torch_view
 
 from tpu_inference.models.jax.utils.multi_modal_utils import (
     flatten_embeddings, sanity_check_mm_encoder_outputs)
@@ -111,6 +114,25 @@ class MultiModalManager:
         encoder_outputs = []
         for _, num_items, mm_kwargs_group in group_and_batch_mm_kwargs(
                 mm_kwargs):
+            
+            # Convert grid_thw to tuples and move other tensors to JAX
+            for k, v in mm_kwargs_group.items():
+                if k in ("image_grid_thw", "video_grid_thw", "grid_thw"):
+                    def to_tuple(x):
+                        if isinstance(x, torch.Tensor):
+                            x = x.tolist()
+                        if isinstance(x, (list, tuple)):
+                            return tuple(to_tuple(i) for i in x)
+                        return x
+                    mm_kwargs_group[k] = to_tuple(v)
+                else:
+                    def move_to_jax(x):
+                        if isinstance(x, torch.Tensor):
+                            with torchax.default_env():
+                                return jax_view(x.to(device="jax"))
+                        return x
+                    mm_kwargs_group[k] = jax.tree.map(move_to_jax, v)
+
             # Run the encoder.
             # `curr_group_outputs` is either of the following:
             # 1. A tensor of shape (num_items, feature_size, hidden_size)
