@@ -456,7 +456,10 @@ class VllmModelWrapper:
                     else:
                         torch_mm_embeds = torch_view(mm_embeds)
                     assert is_multimodal is not None
-                    torch_mm_embeds = torch_mm_embeds[is_multimodal]
+                    # Truncate mm_embeds to match the number of expected multimodal tokens.
+                    # This handles cases where mm_embeds may contain trailing padding.
+                    num_expected = is_multimodal.sum().item()
+                    torch_mm_embeds = torch_mm_embeds[:num_expected]
                     call_args = (torch_view(input_ids), torch_mm_embeds)
                 else:
                     call_args = (torch_view(input_ids), )
